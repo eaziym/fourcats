@@ -1,7 +1,11 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { PetCareShell } from "@/components/pet-care/shell";
-import { getDiscoveryData } from "@/lib/discovery-queries";
+import {
+  getFoodForPet,
+  getPlaces,
+  originForPet,
+} from "@/lib/discovery-queries";
 import { getPetCareContext } from "@/lib/pet-queries";
 import { DiscoveryView } from "./discovery-view";
 
@@ -35,11 +39,16 @@ async function DiscoveryContent() {
   const { pet } = await getPetCareContext();
   if (!pet) redirect("/onboarding");
 
-  const data = await getDiscoveryData(pet);
+  const origin = await originForPet(pet);
 
   return (
     <DiscoveryView
-      data={data}
+      origin={origin}
+      groomers={getPlaces("groomer", origin)}
+      vets={getPlaces("vet", origin)}
+      petStores={getPlaces("pet_store", origin)}
+      cafes={getPlaces("cafe", origin)}
+      food={getFoodForPet(pet)}
       pet={{
         name: pet.name,
         species: pet.species,

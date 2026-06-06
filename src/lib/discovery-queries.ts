@@ -69,7 +69,7 @@ function bookingUrl(value: string | null): string | null {
   }
 }
 
-async function originForPet(pet: PetDTO): Promise<DiscoveryOrigin> {
+export async function originForPet(pet: PetDTO): Promise<DiscoveryOrigin> {
   const postal = pet.locationPostalCode?.trim();
   if (postal) {
     const coords = await resolvePostalToLatLng(postal);
@@ -193,15 +193,15 @@ export async function getPlaces(
     if (near.length > 0) {
       const ids = near.map((r) => r.id);
       const distance = new Map(near.map((r) => [r.id, num(r.distance_km)]));
-      const [rows, reviews] = await Promise.all([
-        prisma.servicePlace.findMany({
-          where: { id: { in: ids } },
-          select: PLACE_SELECT,
-        }),
-        topReviewsByPlace(ids),
-      ]);
+      // Serialised to keep each getPlaces call to 1 connection at a time.
+      // With 5 parallel getPlaces/getFoodForPet calls, this keeps peak
+      // concurrent connections equal to the pool max (5) instead of ~9.
+      const rows = await prisma.servicePlace.findMany({
+        where: { id: { in: ids } },
+        select: PLACE_SELECT,
+      });
+      const reviews = await topReviewsByPlace(ids);
       const byId = new Map(rows.map((r) => [r.id, r]));
-      // Preserve the RPC's distance ordering; drop any id without a row.
       return ids.flatMap((id) => {
         const row = byId.get(id);
         if (!row) return [];

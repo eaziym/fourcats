@@ -23,15 +23,16 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pill, SpotlightCard } from "@/components/pet-care/primitives";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import { Spinner } from "@/components/ui/spinner";
 import type {
-  DiscoveryData,
+  DiscoveryOrigin,
   PlaceDTO,
   ProductDTO,
 } from "@/lib/discovery-queries";
@@ -69,19 +70,6 @@ const PAGE_SIZE: Record<Tab, number> = {
   cafe: 30,
   food: 30,
 };
-
-// Places list backing each (non-food) tab.
-function placesForTab(data: DiscoveryData, tab: Tab): PlaceDTO[] {
-  if (tab === "vet") return data.vets;
-  if (tab === "pet_store") return data.petStores;
-  if (tab === "cafe") return data.cafes;
-  return data.groomers;
-}
-
-function tabCount(data: DiscoveryData, tab: Tab): number {
-  if (tab === "food") return data.food.length;
-  return placesForTab(data, tab).length;
-}
 
 function placeIcon(kind: string): typeof Scissors {
   if (kind === "vet") return Cross;
@@ -135,15 +123,49 @@ function supplierLabel(product: ProductDTO): string {
   return product.source === "kohepets" ? "Kohepets" : product.source;
 }
 
+// ---------------------------------------------------------------------------
+// Resolve a server-passed promise into local state so each category loads
+// independently and the UI shows per-tab loading indicators.
+// ---------------------------------------------------------------------------
+function usePromise<T>(promise: Promise<T>): T | undefined {
+  const [value, setValue] = useState<T | undefined>(undefined);
+  useEffect(() => {
+    let active = true;
+    promise.then((v) => {
+      if (active) setValue(v);
+    });
+    return () => {
+      active = false;
+    };
+  }, [promise]);
+  return value;
+}
+
 const PANEL_H = "md:h-[calc(100dvh-66px)]";
 
 export function DiscoveryView({
-  data,
+  origin,
+  groomers: groomersPromise,
+  vets: vetsPromise,
+  petStores: petStoresPromise,
+  cafes: cafesPromise,
+  food: foodPromise,
   pet,
 }: {
-  data: DiscoveryData;
+  origin: DiscoveryOrigin;
+  groomers: Promise<PlaceDTO[]>;
+  vets: Promise<PlaceDTO[]>;
+  petStores: Promise<PlaceDTO[]>;
+  cafes: Promise<PlaceDTO[]>;
+  food: Promise<ProductDTO[]>;
   pet: PetSummary;
 }) {
+  const groomers = usePromise(groomersPromise);
+  const vets = usePromise(vetsPromise);
+  const petStores = usePromise(petStoresPromise);
+  const cafes = usePromise(cafesPromise);
+  const food = usePromise(foodPromise);
+
   const [tab, setTab] = useState<Tab>("groomer");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -151,32 +173,54 @@ export function DiscoveryView({
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const isFood = tab === "food";
-  const places = placesForTab(data, tab);
+
+  // Resolved places for the active non-food tab (undefined while loading).
+  const activePlaces: PlaceDTO[] | undefined = (() => {
+    if (tab === "groomer") return groomers;
+    if (tab === "vet") return vets;
+    if (tab === "pet_store") return petStores;
+    if (tab === "cafe") return cafes;
+    return undefined;
+  })();
+
+  const activeFood = isFood ? food : undefined;
+  const isTabLoading = isFood ? food === undefined : activePlaces === undefined;
+
+  // Count per tab (undefined = still loading).
+  function tabCount(t: Tab): number | undefined {
+    if (t === "groomer") return groomers?.length;
+    if (t === "vet") return vets?.length;
+    if (t === "pet_store") return petStores?.length;
+    if (t === "cafe") return cafes?.length;
+    if (t === "food") return food?.length;
+    return undefined;
+  }
+
   const q = query.trim().toLowerCase();
 
   const filteredPlaces = useMemo(() => {
-    if (isFood) return [];
+    if (isFood || !activePlaces) return [];
     const matched = q
-      ? places.filter(
+      ? activePlaces.filter(
           (p) =>
             p.name.toLowerCase().includes(q) ||
             p.neighbourhood?.toLowerCase().includes(q) ||
             p.serviceTags.some((t) => t.toLowerCase().includes(q)),
         )
-      : places;
+      : activePlaces;
     return [...matched].sort(sortByDistance);
-  }, [isFood, places, q]);
+  }, [isFood, activePlaces, q]);
 
   const filteredFood = useMemo(() => {
-    if (!isFood) return [];
-    if (!q) return data.food;
-    return data.food.filter(
+    if (!isFood || !activeFood) return [];
+    if (!q) return activeFood;
+    return activeFood.filter(
       (p) =>
         p.title.toLowerCase().includes(q) ||
         p.brand?.toLowerCase().includes(q) ||
         p.ingredients?.toLowerCase().includes(q),
     );
-  }, [isFood, data.food, q]);
+  }, [isFood, activeFood, q]);
 
   const pageSize = PAGE_SIZE[tab];
   const totalResults = isFood ? filteredFood.length : filteredPlaces.length;
@@ -200,13 +244,18 @@ export function DiscoveryView({
     ? (visibleFood.find((p) => p.id === selectedId) ?? null)
     : null;
 
-  const near = data.origin?.label ?? "Singapore";
+  const near = origin?.label ?? "Singapore";
   const activeLabel = TABS.find((t) => t.id === tab)?.label.toLowerCase() ?? "";
   const resultLabel = isFood ? "food" : activeLabel;
   const inRadiusCount =
-    !isFood && data.origin
+    !isFood && origin && activePlaces
       ? filteredPlaces.filter((p) => isWithinRadius(p, radiusKm)).length
       : 0;
+
+  // Categories still loading, for the status line.
+  const loadingLabels = TABS.filter((t) => tabCount(t.id) === undefined).map(
+    (t) => t.label.toLowerCase(),
+  );
 
   function changePage(nextPage: number) {
     setPage(Math.min(Math.max(nextPage, 1), totalPages));
@@ -278,7 +327,7 @@ export function DiscoveryView({
           <div className="mt-4 flex flex-wrap gap-2">
             {TABS.map((t) => {
               const Icon = t.icon;
-              const count = tabCount(data, t.id);
+              const count = tabCount(t.id);
               const activeTab = tab === t.id;
               return (
                 <Button
@@ -301,18 +350,38 @@ export function DiscoveryView({
                   {t.label}
                   <span
                     className={cn(
-                      "rounded-full px-1.5 text-xs tabular-nums",
+                      "flex items-center justify-center rounded-full px-1.5 text-xs tabular-nums",
                       activeTab ? "bg-primary-foreground/20" : "bg-background",
                     )}
                   >
-                    {count}
+                    {count !== undefined ? (
+                      count
+                    ) : (
+                      <Spinner
+                        className={cn(
+                          "size-3",
+                          activeTab
+                            ? "text-primary-foreground/70"
+                            : "text-muted-foreground",
+                        )}
+                      />
+                    )}
                   </span>
                 </Button>
               );
             })}
           </div>
 
-          {!isFood && data.origin ? (
+          {loadingLabels.length > 0 && (
+            <div className="mt-3 flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2">
+              <Spinner className="size-3.5 shrink-0 text-primary" />
+              <p className="truncate text-xs text-muted-foreground">
+                Loading {loadingLabels.join(", ")}…
+              </p>
+            </div>
+          )}
+
+          {!isFood && origin ? (
             <RadiusControl
               count={inRadiusCount}
               label={activeLabel}
@@ -326,7 +395,9 @@ export function DiscoveryView({
         </div>
 
         <div className="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto overflow-x-hidden p-5 md:p-7">
-          {isFood ? (
+          {isTabLoading ? (
+            <TabLoadingSkeleton label={activeLabel} near={near} />
+          ) : isFood ? (
             filteredFood.length === 0 ? (
               <EmptyState label="food" />
             ) : (
@@ -353,22 +424,24 @@ export function DiscoveryView({
             ))
           )}
         </div>
-        <ResultsPager
-          currentPage={currentPage}
-          label={resultLabel}
-          onPageChange={changePage}
-          pageEnd={pageEnd}
-          pageStart={pageStart}
-          totalPages={totalPages}
-          totalResults={totalResults}
-        />
+        {!isTabLoading && (
+          <ResultsPager
+            currentPage={currentPage}
+            label={resultLabel}
+            onPageChange={changePage}
+            pageEnd={pageEnd}
+            pageStart={pageStart}
+            totalPages={totalPages}
+            totalResults={totalResults}
+          />
+        )}
       </section>
 
       {/* Map panel */}
       <section className={cn("relative h-[55vh] min-w-0 flex-1", PANEL_H)}>
         <DiscoveryMap
-          places={visiblePlaces}
-          origin={data.origin}
+          places={isTabLoading ? [] : visiblePlaces}
+          origin={origin}
           radiusKm={radiusKm}
           selectedId={selectedId}
           onSelect={setSelectedId}
@@ -396,6 +469,40 @@ export function DiscoveryView({
     </main>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Per-tab loading skeleton
+// ---------------------------------------------------------------------------
+
+function TabLoadingSkeleton({
+  label,
+  near,
+}: {
+  label: string;
+  near: string;
+}) {
+  return (
+    <>
+      <div className="flex items-center gap-2.5 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+        <Spinner className="size-4 shrink-0 text-primary" />
+        <p className="text-sm font-medium text-foreground">
+          Loading {label} {near}…
+        </p>
+      </div>
+      {["a", "b", "c", "d"].map((k, i) => (
+        <div
+          key={k}
+          className="h-24 animate-pulse rounded-2xl border border-border bg-muted/30"
+          style={{ animationDelay: `${i * 100}ms` }}
+        />
+      ))}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Existing sub-components (unchanged)
+// ---------------------------------------------------------------------------
 
 function EmptyState({ label }: { label: string }) {
   return (
@@ -453,7 +560,7 @@ function ListingCard({
             </p>
             {place.topReview ? (
               <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                “{place.topReview.text}”
+                "{place.topReview.text}"
               </p>
             ) : null}
             <div className="mt-2 flex flex-wrap gap-1.5">
