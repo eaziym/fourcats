@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -14,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DWA - Digital Workflow Automation",
-  description: "A digital workflow automation platform",
+  title: "FourCats — Pet care, simplified",
+  description: "Track care, discover local spots, and get AI tips for your pets.",
 };
 
 export default function RootLayout({
@@ -24,12 +25,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background font-sans antialiased`}
       >
-        <Toaster richColors theme="light" position="top-center" />
-        {children}
+        <ThemeProvider>
+          <Toaster position="top-center" richColors />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

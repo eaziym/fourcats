@@ -62,14 +62,14 @@ export function LoginForm({
   }
 
   return (
-    <SpotlightCard className="w-full max-w-md border-[#dac0c3]/60">
+    <SpotlightCard className="w-full max-w-md">
       <CardContent className="p-8">
-        <form className="grid gap-6" onSubmit={onSubmit}>
+        <form className="grid gap-5" onSubmit={onSubmit}>
           <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>
             <Input
               autoComplete="email"
-              className="h-12 rounded-xl border-[#dac0c3]/70"
+              className="h-11"
               id="email"
               name="email"
               placeholder="you@example.com"
@@ -81,7 +81,7 @@ export function LoginForm({
             <Label htmlFor="password">Password</Label>
             <Input
               autoComplete="current-password"
-              className="h-12 rounded-xl border-[#dac0c3]/70"
+              className="h-11"
               id="password"
               name="password"
               required
@@ -89,15 +89,11 @@ export function LoginForm({
             />
           </div>
           {error ? (
-            <p className="text-sm font-medium text-red-600" role="alert">
+            <p className="text-sm font-medium text-destructive" role="alert">
               {error}
             </p>
           ) : null}
-          <Button
-            className="h-12 rounded-full bg-gradient-to-r from-[#ff8da1] to-[#9c3f53] font-bold"
-            disabled={pending}
-            type="submit"
-          >
+          <Button className="h-11 w-full" disabled={pending} size="lg" type="submit">
             {pending ? "Signing in…" : "Sign in"}
           </Button>
         </form>

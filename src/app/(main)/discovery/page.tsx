@@ -41,22 +41,22 @@ const listings = [
 
 function ListPanel() {
   return (
-    <section className="z-10 flex w-full flex-col border-r border-[#dac0c3]/30 bg-white shadow-[4px_0_24px_rgba(29,53,87,0.08)] md:h-screen md:w-[500px]">
-      <div className="border-b border-[#dac0c3]/30 p-5 md:p-8">
-        <h2 className="font-[family-name:var(--font-brand)] text-4xl font-bold md:text-5xl">
-          Local Discovery
+    <section className="z-10 flex w-full flex-col border-r border-border bg-card shadow-sm md:h-screen md:w-[500px]">
+      <div className="border-b border-border p-5 md:p-8">
+        <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+          Local discovery
         </h2>
-        <p className="mt-1 text-lg text-[#554244]">
+        <p className="mt-1 text-lg text-muted-foreground">
           Find trusted services in Singapore.
         </p>
         <div className="relative mt-5">
-          <Search className="absolute left-4 top-1/2 size-6 -translate-y-1/2 text-[#887274]" />
+          <Search className="absolute top-1/2 left-4 size-6 -translate-y-1/2 text-muted-foreground" />
           <Input
-            className="h-14 rounded-xl border-[#dac0c3]/70 bg-[#f8f9fa] pl-12 pr-14 text-lg"
-            placeholder="Find services near Tampines..."
+            className="h-12 rounded-xl pl-12 pr-14 text-base"
+            placeholder="Find services near Tampines…"
           />
           <button
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg bg-[#edeeef] p-2 text-[#554244]"
+            className="absolute top-1/2 right-3 -translate-y-1/2 rounded-lg bg-muted p-2 text-muted-foreground transition-colors hover:bg-muted/80"
             type="button"
           >
             <SlidersHorizontal className="size-5" />
@@ -78,19 +78,19 @@ function ListPanel() {
 
 function MochiFilterBar() {
   return (
-    <div className="mt-4 flex items-center gap-3 rounded-xl border border-[#ffd167] bg-gradient-to-r from-[#ffdf9b]/50 to-white p-2">
+    <div className="mt-4 flex items-center gap-3 rounded-xl border border-primary/25 bg-gradient-to-r from-primary/10 to-card p-2">
       <Avatar className="size-9">
         <AvatarImage alt="Mochi" src={mochiPortrait} />
         <AvatarFallback>M</AvatarFallback>
       </Avatar>
       <div>
-        <p className="text-sm font-bold text-[#785a00]">Top picks for Mochi</p>
-        <p className="text-xs text-[#554244]">
+        <p className="text-sm font-semibold text-foreground">Top picks for Mochi</p>
+        <p className="text-xs text-muted-foreground">
           Filtered for sensitive skin expertise
         </p>
       </div>
       <button
-        className="ml-auto px-2 text-sm font-bold text-[#9c3f53]"
+        className="ml-auto px-2 text-sm font-semibold text-primary"
         type="button"
       >
         Edit
@@ -105,10 +105,10 @@ function FilterChips() {
       {discoveryFilters.map(({ label, icon: Icon, active }) => (
         <button
           className={cn(
-            "flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold",
+            "flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors",
             active
-              ? "border-[#9c3f53] bg-[#9c3f53] text-white"
-              : "border-[#dac0c3] bg-[#edeeef] text-[#191c1d]",
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-muted/60 text-foreground hover:bg-muted",
           )}
           key={label}
           type="button"
@@ -131,7 +131,7 @@ function ListingCard({
   return (
     <SpotlightCard
       className={cn(
-        selected && "bg-gradient-to-r from-white to-[#ffdf9b]/20",
+        selected && "bg-gradient-to-r from-card to-primary/5",
       )}
     >
       <CardContent className="flex gap-5 p-4">
@@ -141,34 +141,32 @@ function ListingCard({
             className="size-28 rounded-lg object-cover"
             src={groomerInterior}
           />
-          <Pill className="absolute left-1 top-1 bg-white text-[#785a00] shadow">
+          <Pill className="absolute top-1 left-1 border-0 bg-card text-amber-700 shadow dark:text-amber-400">
             <Star className="size-3 fill-current" />
             {rating}
           </Pill>
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex justify-between gap-4">
-            <h3 className="font-[family-name:var(--font-brand)] text-2xl font-bold">
-              {name}
-            </h3>
-            <Heart className="size-6 text-[#887274]" />
+            <h3 className="text-xl font-semibold tracking-tight">{name}</h3>
+            <Heart className="size-6 shrink-0 text-muted-foreground" />
           </div>
-          <p className="mt-2 flex items-center gap-2 text-[#554244]">
+          <p className="mt-2 flex items-center gap-2 text-muted-foreground">
             <MapPin className="size-4" />
             {location}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Pill className="rounded-md border border-[#ffd167] bg-[#ffdf9b]/70 text-[#d48700]">
+            <Pill className="rounded-md border border-amber-500/30 bg-amber-500/15 text-amber-800 dark:text-amber-300">
               {tag}
             </Pill>
-            <Pill className="rounded-md bg-[#edeeef] text-[#554244]">
-              HDB-Approved
+            <Pill className="rounded-md bg-muted text-muted-foreground">
+              HDB-approved
             </Pill>
           </div>
           <div className="mt-4 flex items-center justify-between">
-            <span className="font-semibold text-[#9c3f53]">$$$</span>
-            <Button className="rounded-full bg-[#ffd9dd] text-[#9c3f53] hover:bg-[#ffb2bd]">
-              Book Now
+            <span className="font-medium text-muted-foreground">$$$</span>
+            <Button className="rounded-full" size="sm" variant="secondary">
+              Book now
             </Button>
           </div>
         </div>
@@ -179,34 +177,38 @@ function ListingCard({
 
 function SpecialOfferBanner() {
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-[#b0c7f1] p-6 text-[#18365f]">
-      <Pill className="mb-4 rounded-md bg-[#1d3557] text-white">
-        SPECIAL OFFER
+    <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-chart-2/30 to-chart-3/25 p-6 text-foreground dark:from-chart-2/20 dark:to-chart-3/15">
+      <Pill className="mb-4 rounded-md border-0 bg-foreground text-background">
+        Special offer
       </Pill>
-      <h3 className="text-2xl font-bold">First Grooming 20% Off</h3>
-      <p className="mt-2">Available at selected partners near Tampines.</p>
-      <Button className="mt-5 rounded-full bg-[#1d3557]">Claim Offer</Button>
-      <Tag className="absolute -right-2 bottom-0 size-32 text-[#1d3557]/20" />
+      <h3 className="text-2xl font-semibold">First grooming 20% off</h3>
+      <p className="mt-2 text-muted-foreground">
+        Available at selected partners near Tampines.
+      </p>
+      <Button className="mt-5 rounded-full" variant="default">
+        Claim offer
+      </Button>
+      <Tag className="pointer-events-none absolute -right-2 bottom-0 size-32 text-foreground/10" />
     </div>
   );
 }
 
 function MapPanel() {
   return (
-    <section className="relative h-[520px] flex-1 overflow-hidden bg-[#8fc4bd] md:h-screen">
-      <div className="absolute inset-0 opacity-45 [background-image:linear-gradient(35deg,transparent_49%,white_50%,transparent_51%),linear-gradient(118deg,transparent_49%,white_50%,transparent_51%),linear-gradient(90deg,transparent_49%,white_50%,transparent_51%)] [background-size:140px_110px,190px_160px,86px_86px]" />
-      <Button className="absolute left-1/2 top-8 z-10 -translate-x-1/2 rounded-full bg-white text-[#9c3f53] shadow-lg hover:bg-white">
+    <section className="relative h-[520px] flex-1 overflow-hidden bg-gradient-to-br from-chart-3/40 via-chart-2/30 to-primary/20 md:h-screen dark:from-chart-3/20 dark:via-chart-2/15 dark:to-primary/10">
+      <div className="absolute inset-0 opacity-40 [background-image:linear-gradient(35deg,transparent_49%,color-mix(in_oklch,var(--card),transparent_60%)_50%,transparent_51%),linear-gradient(118deg,transparent_49%,color-mix(in_oklch,var(--card),transparent_60%)_50%,transparent_51%),linear-gradient(90deg,transparent_49%,color-mix(in_oklch,var(--card),transparent_60%)_50%,transparent_51%)] [background-size:140px_110px,190px_160px,86px_86px]" />
+      <Button
+        className="absolute top-8 left-1/2 z-10 -translate-x-1/2 rounded-full shadow-lg"
+        variant="secondary"
+      >
         <Search className="size-4" />
         Search this area
       </Button>
-      <div className="absolute right-5 top-6 z-10 grid gap-3">
-        <Button
-          className="size-12 rounded-full bg-white text-black shadow-md hover:bg-white"
-          size="icon"
-        >
+      <div className="absolute top-6 right-5 z-10 grid gap-3">
+        <Button className="size-12 rounded-full shadow-md" size="icon" variant="secondary">
           <Cross className="size-6" />
         </Button>
-        <div className="grid overflow-hidden rounded-full bg-white shadow-md">
+        <div className="grid overflow-hidden rounded-full border border-border bg-card shadow-md">
           <button className="px-4 py-3 text-2xl" type="button">
             +
           </button>
@@ -215,22 +217,22 @@ function MapPanel() {
           </button>
         </div>
       </div>
-      <div className="absolute left-[42%] top-[40%] z-10 flex items-center gap-3 rounded-xl bg-white/85 p-3 shadow-md backdrop-blur">
-        <div className="flex size-12 items-center justify-center rounded-lg bg-[#20333c] text-cyan-300">
+      <div className="absolute top-[40%] left-[42%] z-10 flex items-center gap-3 rounded-xl border border-border bg-card/90 p-3 shadow-md backdrop-blur">
+        <div className="flex size-12 items-center justify-center rounded-lg bg-foreground text-background">
           <Sparkles className="size-5 fill-current" />
         </div>
         <div>
           <p className="font-semibold">Fluffy Paws Spa</p>
-          <p className="text-sm font-semibold text-[#9c3f53]">☆ 4.9 (120)</p>
+          <p className="text-sm font-medium text-primary">☆ 4.9 (120)</p>
         </div>
       </div>
-      <div className="absolute left-[45%] top-[50%] z-10 flex size-12 items-center justify-center rounded-full border-4 border-white bg-[#9c3f53] text-white shadow-md">
+      <div className="absolute top-[50%] left-[45%] z-10 flex size-12 items-center justify-center rounded-full border-4 border-background bg-primary text-primary-foreground shadow-md">
         <Scissors className="size-6" />
       </div>
-      <div className="absolute left-[68%] top-[29%] z-10 flex size-7 items-center justify-center rounded-full border-2 border-white bg-[#785a00] text-white shadow-md">
+      <div className="absolute top-[29%] left-[68%] z-10 flex size-7 items-center justify-center rounded-full border-2 border-background bg-amber-700 text-white shadow-md dark:bg-amber-600">
         <Cross className="size-4" />
       </div>
-      <div className="absolute left-[62%] top-[62%] z-10 flex size-10 items-center justify-center rounded-full border-2 border-white bg-[#f8f9fa] text-[#554244] shadow-md">
+      <div className="absolute top-[62%] left-[62%] z-10 flex size-10 items-center justify-center rounded-full border-2 border-background bg-card text-foreground shadow-md">
         <Scissors className="size-5" />
       </div>
     </section>
@@ -240,7 +242,7 @@ function MapPanel() {
 export default function DiscoveryPage() {
   return (
     <PetCareShell active="discovery">
-      <main className="flex min-h-screen flex-col bg-white md:ml-64 md:flex-row">
+      <main className="flex min-h-screen flex-col bg-background md:ml-64 md:flex-row">
         <ListPanel />
         <MapPanel />
       </main>

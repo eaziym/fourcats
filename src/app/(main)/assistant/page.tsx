@@ -10,33 +10,33 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { groomerInterior, mochiPortrait } from "@/lib/pet-data";
+import { groomerInterior } from "@/lib/pet-data";
 import { Pill } from "@/components/pet-care/primitives";
 import { PetCareShell } from "@/components/pet-care/shell";
 
 function ChatArea() {
   return (
-    <section className="relative flex min-h-[calc(100vh-4rem)] flex-col overflow-hidden bg-[radial-gradient(#dac0c3_1px,transparent_1px)] [background-size:34px_34px]">
+    <section className="relative flex min-h-[calc(100vh-4rem)] flex-col overflow-hidden bg-muted/20 [background-image:radial-gradient(color-mix(in_oklch,var(--border),transparent_40%)_1px,transparent_1px)] [background-size:30px_30px]">
       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-10 px-5 py-8 md:px-10">
-        <div className="mx-auto rounded-full bg-[#edeeef] px-5 py-2 text-sm text-[#554244]">
+        <div className="mx-auto rounded-full bg-muted px-5 py-2 text-sm text-muted-foreground">
           Today
         </div>
 
         <div className="flex items-start gap-4">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#ff8da1] text-[#782338]">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">
             <Bot className="size-5" />
           </div>
-          <div className="max-w-2xl rounded-2xl bg-white/90 p-6 text-xl leading-8 shadow-[0_4px_20px_rgba(29,53,87,0.05)] backdrop-blur">
-            Hi there! How is Mochi doing today? I'm ready to help with any
+          <div className="max-w-2xl rounded-2xl border border-border/60 bg-card/95 p-6 text-lg leading-relaxed text-foreground shadow-sm backdrop-blur-sm">
+            Hi there! How is Mochi doing today? I&apos;m ready to help with any
             grooming, health, or lifestyle questions you have for your Shih Tzu.
           </div>
         </div>
 
         <div className="ml-auto flex max-w-3xl items-center gap-4">
-          <div className="rounded-2xl bg-gradient-to-br from-[#ffd9dd] to-[#ff8da1] p-6 text-xl leading-8 text-[#782338] shadow-sm">
+          <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/15 to-accent/40 p-6 text-lg leading-relaxed text-foreground shadow-sm">
             Best groomer near Tampines for my Shih Tzu with sensitive skin?
           </div>
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#ffd167] text-[#765900]">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
             <UserRound className="size-5" />
           </div>
         </div>
@@ -44,13 +44,13 @@ function ChatArea() {
         <GroomerRecommendation />
       </div>
 
-      <div className="sticky bottom-0 bg-gradient-to-t from-[#f8f9fa] via-[#f8f9fa] p-5 md:px-10">
-        <div className="mx-auto flex max-w-4xl items-center gap-4 rounded-full border border-[#dac0c3]/70 bg-white px-5 py-3 shadow-[0_12px_28px_rgba(29,53,87,0.14)]">
-          <Mic className="size-5 text-[#887274]" />
-          <span className="flex-1 truncate text-[#887274]">
-            Ask about Mochi's health, diet, or local services...
+      <div className="sticky bottom-0 bg-gradient-to-t from-background via-background/95 to-transparent p-5 md:px-10">
+        <div className="mx-auto flex max-w-4xl items-center gap-4 rounded-full border border-border bg-card px-5 py-3 shadow-md">
+          <Mic className="size-5 text-muted-foreground" />
+          <span className="flex-1 truncate text-muted-foreground">
+            Ask about Mochi&apos;s health, diet, or local services…
           </span>
-          <Button className="size-11 rounded-full bg-[#9c3f53]" size="icon">
+          <Button className="size-11 shrink-0 rounded-full" size="icon">
             <SendHorizontal className="size-5" />
           </Button>
         </div>
@@ -62,37 +62,36 @@ function ChatArea() {
 function GroomerRecommendation() {
   return (
     <div className="flex items-start gap-4">
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#ff8da1] text-[#782338]">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">
         <Bot className="size-5" />
       </div>
-      <div className="max-w-2xl rounded-2xl bg-white/90 p-7 text-xl leading-8 shadow-[0_4px_20px_rgba(29,53,87,0.05)] backdrop-blur">
+      <div className="max-w-2xl rounded-2xl border border-border/60 bg-card/95 p-7 text-lg leading-relaxed shadow-sm backdrop-blur-sm">
         <p>
-          Based on Mochi's profile, sensitive skin requires special care. I've
-          found a highly-rated groomer in Tampines that specializes in
+          Based on Mochi&apos;s profile, sensitive skin requires special care.
+          I&apos;ve found a highly-rated groomer in Tampines that specializes in
           dermatological needs.
         </p>
-        <div className="my-5 flex gap-4 rounded-xl border border-[#dac0c3]/60 bg-[#f8f9fa] p-4 text-base leading-6">
-          <img
-            alt="Heartland Paws Tampines"
-            className="size-20 rounded-lg object-cover"
-            src={groomerInterior}
-          />
+        <div className="my-5 flex gap-4 rounded-xl border border-border bg-muted/40 p-4 text-base leading-relaxed">
+          <Avatar className="size-20 shrink-0 rounded-lg">
+            <AvatarImage alt="Heartland Paws Tampines" src={groomerInterior} />
+            <AvatarFallback>HP</AvatarFallback>
+          </Avatar>
           <div className="flex-1">
             <div className="flex justify-between gap-2">
-              <h4 className="font-bold">Heartland Paws Tampines</h4>
-              <Pill className="bg-[#ffdf9b] text-[#765900]">
+              <h4 className="font-semibold">Heartland Paws Tampines</h4>
+              <Pill className="border-0 bg-secondary text-secondary-foreground">
                 <Star className="size-3 fill-current" />
                 4.8
               </Pill>
             </div>
-            <p className="text-[#554244]">
+            <p className="text-muted-foreground">
               Specializes in medicated baths & hypoallergenic styling.
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <Pill className="bg-[#ffdf9b]/70 text-[#785a00]">
-                HDB-Approved
+              <Pill className="border-0 bg-primary/15 text-primary">
+                HDB-approved
               </Pill>
-              <Pill className="bg-[#edeeef] text-[#554244]">1.2km away</Pill>
+              <Pill className="bg-muted text-muted-foreground">1.2 km away</Pill>
             </div>
           </div>
         </div>
@@ -105,7 +104,7 @@ function GroomerRecommendation() {
           {["Yes, check Saturday", "Show other options", "Call them"].map(
             (action) => (
               <button
-                className="rounded-full border border-[#dac0c3] bg-[#f3f4f5] px-4 py-2 text-sm font-medium text-[#9c3f53]"
+                className="rounded-full border border-border bg-muted/60 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-muted"
                 key={action}
                 type="button"
               >
@@ -125,7 +124,7 @@ function ContextSidebar() {
       source: "Google Maps API",
       title: "Heartland Paws Reviews",
       detail:
-        '"Absolutely wonderful with my sensitive pup. They used a special medicated shampoo that didn\'t irritate her skin at all...."',
+        "\"Absolutely wonderful with my sensitive pup. They used a special medicated shampoo that didn't irritate her skin at all....\"",
       icon: MapIcon,
     },
     {
@@ -138,25 +137,27 @@ function ContextSidebar() {
   ];
 
   return (
-    <aside className="hidden border-l border-[#dac0c3]/40 bg-white px-8 py-8 lg:block">
-      <h3 className="mb-8 flex items-center gap-3 text-sm font-bold tracking-wide text-[#554244]">
+    <aside className="hidden border-l border-border bg-card/50 px-8 py-8 lg:block">
+      <h3 className="mb-8 flex items-center gap-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
         <Info className="size-5" />
-        AI CONTEXT SOURCES
+        AI context sources
       </h3>
       <div className="grid gap-4">
         {sources.map(({ source, title, detail, icon: Icon }) => (
           <div
-            className="rounded-2xl border border-[#dac0c3]/70 bg-[#f8f9fa] p-4"
+            className="rounded-2xl border border-border bg-muted/30 p-4"
             key={title}
           >
             <p className="mb-4 flex items-center gap-2 text-sm">
-              <span className="rounded-md bg-[#d5e3ff] p-2 text-[#2c4366]">
+              <span className="rounded-md bg-primary/15 p-2 text-primary">
                 <Icon className="size-4" />
               </span>
               {source}
             </p>
-            <h4 className="mb-2 text-xl">{title}</h4>
-            <p className="text-sm leading-6 text-[#554244]">{detail}</p>
+            <h4 className="mb-2 text-lg font-semibold">{title}</h4>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {detail}
+            </p>
           </div>
         ))}
       </div>
@@ -167,7 +168,7 @@ function ContextSidebar() {
 export default function AssistantPage() {
   return (
     <PetCareShell active="assistant">
-      <main className="grid min-h-screen bg-[#f8f9fa] md:ml-64 lg:grid-cols-[1fr_320px]">
+      <main className="grid min-h-screen bg-background md:ml-64 lg:grid-cols-[1fr_320px]">
         <ChatArea />
         <ContextSidebar />
       </main>

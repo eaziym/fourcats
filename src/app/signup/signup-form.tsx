@@ -67,15 +67,15 @@ export function SignupForm() {
   }
 
   return (
-    <SpotlightCard className="w-full max-w-md border-[#dac0c3]/60">
+    <SpotlightCard className="w-full max-w-md">
       <CardContent className="p-8">
-        <form className="grid gap-5" onSubmit={onSubmit}>
+        <form className="grid gap-4" onSubmit={onSubmit}>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="firstName">First name</Label>
               <Input
                 autoComplete="given-name"
-                className="h-11 rounded-xl border-[#dac0c3]/70"
+                className="h-10"
                 id="firstName"
                 name="firstName"
                 required
@@ -85,7 +85,7 @@ export function SignupForm() {
               <Label htmlFor="lastName">Last name</Label>
               <Input
                 autoComplete="family-name"
-                className="h-11 rounded-xl border-[#dac0c3]/70"
+                className="h-10"
                 id="lastName"
                 name="lastName"
                 required
@@ -96,7 +96,7 @@ export function SignupForm() {
             <Label htmlFor="email">Email</Label>
             <Input
               autoComplete="email"
-              className="h-11 rounded-xl border-[#dac0c3]/70"
+              className="h-10"
               id="email"
               name="email"
               placeholder="you@example.com"
@@ -108,7 +108,7 @@ export function SignupForm() {
             <Label htmlFor="password">Password</Label>
             <Input
               autoComplete="new-password"
-              className="h-11 rounded-xl border-[#dac0c3]/70"
+              className="h-10"
               id="password"
               name="password"
               required
@@ -119,16 +119,16 @@ export function SignupForm() {
             <Label htmlFor="confirmPassword">Confirm password</Label>
             <Input
               autoComplete="new-password"
-              className="h-11 rounded-xl border-[#dac0c3]/70"
+              className="h-10"
               id="confirmPassword"
               name="confirmPassword"
               required
               type="password"
             />
           </div>
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-3 pt-1">
             <input
-              className="mt-1 size-4 shrink-0 rounded border border-[#dac0c3] accent-[#9c3f53]"
+              className="border-input text-primary focus-visible:ring-ring mt-1 size-4 shrink-0 rounded border accent-primary"
               id="terms"
               name="terms"
               required
@@ -140,20 +140,16 @@ export function SignupForm() {
             </Label>
           </div>
           {error ? (
-            <p className="text-sm font-medium text-red-600" role="alert">
+            <p className="text-sm font-medium text-destructive" role="alert">
               {error}
             </p>
           ) : null}
           {info ? (
-            <p className="text-sm font-medium text-[#2c4366]" role="status">
+            <p className="text-sm font-medium text-foreground/90" role="status">
               {info}
             </p>
           ) : null}
-          <Button
-            className="h-12 rounded-full bg-gradient-to-r from-[#ff8da1] to-[#9c3f53] font-bold"
-            disabled={pending}
-            type="submit"
-          >
+          <Button className="h-11 w-full" disabled={pending} size="lg" type="submit">
             {pending ? "Creating account…" : "Create account"}
           </Button>
         </form>
