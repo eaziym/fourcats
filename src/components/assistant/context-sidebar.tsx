@@ -1,11 +1,20 @@
 "use client";
 
-import { Heart, Info, Map as MapIcon, ShoppingBag } from "lucide-react";
+import {
+  Heart,
+  Map as MapIcon,
+  PanelRightClose,
+  ShoppingBag,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { CollapsibleAssistantPanel } from "@/components/assistant/collapsible-assistant-panel";
 import { usePetCare } from "@/components/pet-care/pet-care-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ASSISTANT_AGENTS, type AssistantAgentId } from "@/lib/agents/registry";
 import { buildContextPetSubtitle } from "@/lib/assistant-pet-copy";
 import { petPlaceholderImage } from "@/lib/pet-data";
+
+const STORAGE_KEY = "llp-assistant-context-collapsed";
 
 const sources = [
   {
@@ -32,6 +41,7 @@ export function ContextSidebar({
   activeAgentId: AssistantAgentId;
 }) {
   const { pet } = usePetCare();
+  const [collapsed, setCollapsed] = useState(false);
   const agent = ASSISTANT_AGENTS.find((a) => a.id === activeAgentId);
   const petName = pet?.name ?? "Your pet";
   const petAvatar = pet ? petPlaceholderImage(pet.species) : undefined;
@@ -39,20 +49,55 @@ export function ContextSidebar({
     ? buildContextPetSubtitle(pet)
     : "Add details in Pet Profiles";
 
+  useEffect(() => {
+    if (localStorage.getItem(STORAGE_KEY) === "true") {
+      setCollapsed(true);
+    }
+  }, []);
+
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem(STORAGE_KEY, String(next));
+      return next;
+    });
+  };
+
   return (
-    <aside className="hidden min-h-0 w-[320px] shrink-0 flex-col overflow-y-auto border-l border-border bg-card lg:flex">
-      <div className="flex flex-1 flex-col p-6 md:p-8">
-        <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-          <Info className="size-5 shrink-0" />
-          {activeAgentId === "meme" ? "Meme agent" : "AI context sources"}
-        </h3>
+    <CollapsibleAssistantPanel
+      breakpointClass="lg:flex"
+      className="bg-card"
+      collapsed={collapsed}
+      collapsedLabel="Context"
+      expandTooltip="Show AI context sources"
+      expandedInnerWidthClass="w-[320px]"
+      expandedWidthClass="w-[320px]"
+      onToggle={toggleCollapsed}
+      side="right"
+    >
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6 md:p-8">
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+            {activeAgentId === "meme" ? "Meme agent" : "AI context sources"}
+          </span>
+          <button
+            aria-label="Collapse AI context sources"
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            onClick={toggleCollapsed}
+            title="Hide AI context sources"
+            type="button"
+          >
+            <PanelRightClose className="size-4" />
+          </button>
+        </div>
+
         {agent ? (
           <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
             <span className="font-medium text-foreground">{agent.label}.</span>{" "}
             {agent.description}
           </p>
         ) : null}
-        <div className="mb-6 flex items-center gap-3 rounded-xl border border-amber-300/60 bg-amber-50/60 p-3 dark:border-amber-700/40 dark:bg-amber-950/30">
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-amber-300/60 bg-amber-50/60 p-3 dark:border-amber-700/40 dark:bg-amber-950/30">
           <Avatar className="size-9 border border-border">
             <AvatarImage alt={petName} src={petAvatar} />
             <AvatarFallback>{petName.slice(0, 1).toUpperCase()}</AvatarFallback>
@@ -78,7 +123,7 @@ export function ContextSidebar({
             </ul>
           </div>
         ) : (
-          <div className="grid flex-1 gap-3">
+          <div className="grid gap-3">
             {sources.map(({ source, title, detail, icon: Icon, iconWrap }) => (
               <div
                 className="rounded-xl border border-border bg-card p-3 shadow-sm transition-shadow hover:shadow-md"
@@ -104,10 +149,11 @@ export function ContextSidebar({
             ))}
           </div>
         )}
+
         <div className="pointer-events-none mt-auto flex justify-center pt-8 opacity-[0.12]">
-          <Heart className="size-[120px] text-primary" aria-hidden />
+          <Heart aria-hidden className="size-[120px] text-primary" />
         </div>
       </div>
-    </aside>
+    </CollapsibleAssistantPanel>
   );
 }

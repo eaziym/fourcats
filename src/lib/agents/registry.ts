@@ -40,6 +40,16 @@ export const ASSISTANT_AGENTS = [
 export type AssistantAgentId = (typeof ASSISTANT_AGENTS)[number]["id"];
 export type AssistantAgentKind = (typeof ASSISTANT_AGENTS)[number]["kind"];
 
+/** Agents that run implicitly — not shown in the multi-select chips. */
+export const HIDDEN_AGENT_LABELS: Record<string, string> = {
+  booking: "Booking assistant",
+};
+
 export function getAssistantAgent(id: string) {
   return ASSISTANT_AGENTS.find((a) => a.id === id);
+}
+
+/** Label for any agent id, including hidden ones (e.g. booking). */
+export function getAgentLabel(id: string): string | undefined {
+  return getAssistantAgent(id)?.label ?? HIDDEN_AGENT_LABELS[id];
 }

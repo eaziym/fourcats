@@ -533,3 +533,20 @@
   /* Remove default selection styling - we handle it in CustomNode */
   box-shadow: none !important;
 }
+
+/* Assistant places map — popup/tooltip styling */
+.leaflet-popup-content-wrapper {
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  box-shadow: var(--llp-sh-2);
+  padding: 0;
+}
+
+.leaflet-popup-content {
+  margin: 0.75rem;
+  line-height: 1.4;
+}
+
+.leaflet-popup-tip {
+  border-top-color: var(--border);
+}

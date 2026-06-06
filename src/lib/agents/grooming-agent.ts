@@ -31,6 +31,9 @@ function toCard(p: ServicePlaceResult): ServicePlaceCard {
     websiteUrl: p.websiteUrl,
     googleMapsUrl: p.googleMapsUrl,
     tags: [...p.serviceTags, ...p.suitabilityTags],
+    lat: p.lat,
+    lng: p.lng,
+    kind: p.kind,
   };
 }
 

@@ -13,8 +13,10 @@ import { usePetCare } from "@/components/pet-care/pet-care-provider";
 import { PetCareShell } from "@/components/pet-care/shell";
 import {
   type AssistantAgentId,
+  getAgentLabel,
   getAssistantAgent,
 } from "@/lib/agents/registry";
+import type { BookingDraft } from "@/lib/booking/types";
 import type {
   ChatMessageData,
   ChatMessageDTO,
@@ -31,6 +33,58 @@ import {
 } from "./session-actions";
 
 type RunResult = { content: string; data?: ChatMessageData | null };
+
+const BOOKING_INTENT_RE =
+  /\b(book(ing)?|appointment|reserve|reservation|schedule)\b/i;
+
+function extractRecentPlaces(
+  msgs: ChatMessageDTO[],
+): { id: string; name: string }[] {
+  const byId = new Map<string, string>();
+  for (const m of msgs) {
+    for (const p of m.data?.places ?? []) {
+      byId.set(p.id, p.name);
+    }
+  }
+  return [...byId.entries()].map(([id, name]) => ({ id, name }));
+}
+
+function looksLikeBookingIntent(text: string): boolean {
+  return BOOKING_INTENT_RE.test(text);
+}
+
+async function runBookingAgent(args: {
+  message: string;
+  servicePlaceId?: string;
+  requestedService?: string;
+  recentPlaces: { id: string; name: string }[];
+}): Promise<RunResult> {
+  try {
+    const res = await fetch("/api/agents/booking", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(args),
+    });
+    const data = (await res.json()) as {
+      assistantText?: string;
+      bookingDraft?: BookingDraft;
+      toolError?: string;
+      error?: string;
+    };
+    if (!res.ok)
+      throw new Error(data.error || `Request failed (${res.status})`);
+    return {
+      content:
+        data.assistantText ||
+        data.toolError ||
+        "Tell me which groomer or vet you'd like to book.",
+      data: data.bookingDraft ? { bookingDraft: data.bookingDraft } : null,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Something went wrong.";
+    return { content: `Sorry — ${msg}`, data: { isError: true } };
+  }
+}
 
 function readAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -209,6 +263,8 @@ export default function AssistantPage() {
   );
   const [locating, setLocating] = useState(false);
   const [pendingAgents, setPendingAgents] = useState<AssistantAgentId[]>([]);
+  const [bookingPending, setBookingPending] = useState(false);
+  const [bookingPlaceId, setBookingPlaceId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -237,7 +293,7 @@ export default function AssistantPage() {
     };
   }, []);
 
-  const scrollKey = `${messages.length}-${pendingAgents.length}-${sessionId}`;
+  const scrollKey = `${messages.length}-${pendingAgents.length}-${bookingPending}-${sessionId}`;
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll when transcript changes
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -310,6 +366,102 @@ export default function AssistantPage() {
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
     );
+  }
+
+  async function appendAssistantMessage(
+    sid: string,
+    msg: ChatMessageDTO,
+  ): Promise<void> {
+    setMessages((prev) => [...prev, msg]);
+    try {
+      await appendChatMessages(sid, [
+        {
+          role: msg.role,
+          agentId: msg.agentId,
+          content: msg.content,
+          data: msg.data,
+        },
+      ]);
+      const list = await listChatSessions();
+      setSessions(list);
+    } catch {
+      /* best-effort */
+    }
+  }
+
+  async function invokeBookingAgent(
+    sid: string,
+    opts: {
+      message: string;
+      servicePlaceId?: string;
+      requestedService?: string;
+      recentPlaces: { id: string; name: string }[];
+    },
+  ): Promise<void> {
+    setBookingPending(true);
+    const result = await runBookingAgent(opts);
+    const assistantMsg: ChatMessageDTO = {
+      id: `a-booking-${Date.now()}`,
+      role: "assistant",
+      agentId: "booking",
+      content: result.content,
+      data: result.data ?? null,
+      createdAt: new Date().toISOString(),
+    };
+    setBookingPending(false);
+    await appendAssistantMessage(sid, assistantMsg);
+  }
+
+  async function handleBookPlace(placeId: string, placeName: string) {
+    if (busy || bookingPending) return;
+    setBookingPlaceId(placeId);
+    setError(null);
+
+    let sid = sessionId;
+    if (!sid) {
+      const s = await createChatSession();
+      if (!s) {
+        setError("Couldn't start a chat. Please sign in again.");
+        setBookingPlaceId(null);
+        return;
+      }
+      setSessions((prev) => [s, ...prev]);
+      setSessionId(s.id);
+      sid = s.id;
+    }
+
+    const userText = `Book an appointment at ${placeName}.`;
+    const userMsg: ChatMessageDTO = {
+      id: `u-book-${Date.now()}`,
+      role: "user",
+      agentId: "user",
+      content: userText,
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    try {
+      await appendChatMessages(sid, [
+        { role: "user", agentId: "user", content: userText },
+      ]);
+    } catch {
+      /* best-effort */
+    }
+
+    const recentPlaces = extractRecentPlaces(messages);
+    const serviceKind = messages.some(
+      (m) =>
+        m.agentId === "vet" && m.data?.places?.some((p) => p.id === placeId),
+    )
+      ? "Vet consultation"
+      : "Grooming appointment";
+
+    await invokeBookingAgent(sid, {
+      message: userText,
+      servicePlaceId: placeId,
+      requestedService: serviceKind,
+      recentPlaces,
+    });
+    setBookingPlaceId(null);
   }
 
   async function handleSend(e: React.FormEvent) {
@@ -424,14 +576,52 @@ export default function AssistantPage() {
     } catch {
       /* persistence is best-effort; live transcript already shown */
     }
+
+    // Implicit booking agent — not selectable, runs on booking intent or place context.
+    const recentPlaces = extractRecentPlaces([
+      ...messages,
+      userMsg,
+      ...collected,
+    ]);
+    const shouldBook =
+      looksLikeBookingIntent(text) &&
+      (recentPlaces.length > 0 ||
+        /\b(at|with)\s+\w/i.test(text) ||
+        selectedAgents.some((a) => a === "grooming" || a === "vet"));
+
+    if (shouldBook) {
+      setBookingPending(true);
+      const bookingResult = await runBookingAgent({
+        message: text,
+        recentPlaces,
+      });
+      setBookingPending(false);
+      const bookingMsg: ChatMessageDTO = {
+        id: `a-booking-${Date.now()}`,
+        role: "assistant",
+        agentId: "booking",
+        content: bookingResult.content,
+        data: bookingResult.data ?? null,
+        createdAt: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, bookingMsg]);
+      try {
+        await appendChatMessages(sid, [
+          {
+            role: bookingMsg.role,
+            agentId: bookingMsg.agentId,
+            content: bookingMsg.content,
+            data: bookingMsg.data,
+          },
+        ]);
+        const list = await listChatSessions();
+        setSessions(list);
+      } catch {
+        /* best-effort */
+      }
+    }
   }
 
-  const showsPhoto =
-    selectedAgents.includes("food") ||
-    selectedAgents.includes("meme") ||
-    selectedAgents.includes("vet");
-  const showsLocation =
-    selectedAgents.includes("grooming") || selectedAgents.includes("vet");
   const isEmpty = messages.length === 0 && pendingAgents.length === 0;
   const activeAgentId = selectedAgents[0] ?? "general";
 
@@ -472,7 +662,12 @@ export default function AssistantPage() {
               ) : (
                 <>
                   {messages.map((m) => (
-                    <ChatMessageView key={m.id} message={m} />
+                    <ChatMessageView
+                      bookingPlaceId={bookingPlaceId}
+                      key={m.id}
+                      message={m}
+                      onBookPlace={handleBookPlace}
+                    />
                   ))}
                   {pendingAgents.map((a) => (
                     <PendingMessage
@@ -480,6 +675,9 @@ export default function AssistantPage() {
                       key={`pending-${a}`}
                     />
                   ))}
+                  {bookingPending ? (
+                    <PendingMessage agentLabel={getAgentLabel("booking")} />
+                  ) : null}
                 </>
               )}
             </div>
@@ -519,44 +717,58 @@ export default function AssistantPage() {
                 </div>
               ) : null}
 
-              <div className="flex items-end gap-2 rounded-3xl border border-border bg-card/90 p-2 shadow-[var(--llp-sh-1)] backdrop-blur-md">
-                {showsPhoto ? (
-                  <label
-                    className={cn(
-                      "grid size-10 shrink-0 cursor-pointer place-items-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-muted",
-                      file && "border-primary text-primary",
-                    )}
-                    title="Attach a pet photo"
-                  >
-                    <ImagePlus className="size-5" />
-                    <input
-                      accept="image/png,image/jpeg,image/webp"
-                      className="sr-only"
-                      onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                      ref={fileInputRef}
-                      type="file"
-                    />
-                  </label>
-                ) : null}
-
-                {showsLocation ? (
+              {coords ? (
+                <div className="flex items-center gap-2 self-start rounded-full border border-primary/40 bg-primary/5 px-3 py-1.5 text-sm text-primary">
+                  <MapPin className="size-4 shrink-0" />
+                  <span>Using your current location</span>
                   <button
-                    className={cn(
-                      "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted",
-                      coords && "border-primary text-primary",
-                    )}
-                    disabled={locating}
-                    onClick={handleUseLocation}
+                    aria-label="Clear location"
+                    className="rounded-full p-0.5 text-primary/70 hover:text-destructive"
+                    onClick={() => setCoords(null)}
                     type="button"
                   >
-                    {locating ? (
-                      <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    ) : (
-                      <MapPin className="size-4" />
-                    )}
-                    {coords ? "Location set" : "Use my location"}
+                    <X className="size-3.5" />
                   </button>
-                ) : null}
+                </div>
+              ) : null}
+
+              <div className="flex items-end gap-2 rounded-3xl border border-border bg-card/90 p-2 shadow-[var(--llp-sh-1)] backdrop-blur-md">
+                <label
+                  className={cn(
+                    "grid size-10 shrink-0 cursor-pointer place-items-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-muted",
+                    file && "border-primary text-primary",
+                  )}
+                  title="Attach a pet photo"
+                >
+                  <ImagePlus className="size-5" />
+                  <input
+                    accept="image/png,image/jpeg,image/webp"
+                    className="sr-only"
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    ref={fileInputRef}
+                    type="file"
+                  />
+                </label>
+
+                <button
+                  className={cn(
+                    "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted",
+                    coords && "border-primary text-primary",
+                  )}
+                  disabled={locating}
+                  onClick={handleUseLocation}
+                  title="Use your current location"
+                  type="button"
+                >
+                  {locating ? (
+                    <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  ) : (
+                    <MapPin className="size-4" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {coords ? "Location set" : "Use location"}
+                  </span>
+                </button>
 
                 <textarea
                   className="max-h-40 min-h-10 flex-1 resize-none bg-transparent px-3 py-2 text-base outline-none placeholder:text-muted-foreground"

@@ -25,6 +25,9 @@ export type ServicePlaceCard = {
   websiteUrl: string | null;
   googleMapsUrl: string | null;
   tags: string[];
+  lat: number | null;
+  lng: number | null;
+  kind?: string | null;
 };
 
 /** Format SG cents to a "S$12.90" string. */
