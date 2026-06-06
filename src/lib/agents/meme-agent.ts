@@ -8,6 +8,7 @@ import {
   type MemeBaselineTemplate,
   resolveMemeStylePrompt,
 } from "@/lib/agents/meme-baseline-catalog";
+import { getAgentModel } from "@/lib/ai/providers";
 
 /** Mutable run context: pet bytes from the route; tool may set `generatedMemeDataUrl` so the model never sees huge base64 in tool output. */
 export type MemeAgentContext = {
@@ -148,7 +149,7 @@ function createGeneratePetMemeTool(catalog: MemeBaselineTemplate[]) {
 export function createMemeAgent(catalog: MemeBaselineTemplate[]) {
   return new Agent<MemeAgentContext>({
     name: "Meme agent",
-    model: "gpt-4o",
+    model: getAgentModel(),
     instructions: buildMemeAgentInstructions(catalog),
     tools: [createGeneratePetMemeTool(catalog)],
   });

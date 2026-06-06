@@ -2,6 +2,7 @@ import "server-only";
 
 import { Agent, tool } from "@openai/agents";
 import { z } from "zod";
+import { getAgentModel } from "@/lib/ai/providers";
 import type { ServicePlaceCard } from "@/lib/pet-data/format";
 import {
   postalToLatLng,
@@ -38,8 +39,6 @@ function toCard(p: ServicePlaceResult): ServicePlaceCard {
     kind: p.kind,
   };
 }
-
-const VET_AGENT_MODEL = process.env.AI_AGENT_MODEL ?? "gpt-4o";
 
 const searchVetsTool = tool({
   name: "search_vets",
@@ -139,7 +138,7 @@ export function buildVetAgent(
 ): Agent<VetAgentContext> {
   return new Agent<VetAgentContext>({
     name: "Vet Finder",
-    model: VET_AGENT_MODEL,
+    model: getAgentModel(),
     instructions: `${BASE_INSTRUCTIONS}\n\n${contextText}\n\n--- LOCATION ---\n${locationNote}`,
     tools: [searchVetsTool],
   });

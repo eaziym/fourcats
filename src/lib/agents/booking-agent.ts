@@ -7,6 +7,7 @@ import {
   getServicePlaceForBooking,
   matchPlaceFromMessage,
 } from "@/lib/booking/create-draft";
+import { getAgentModel } from "@/lib/ai/providers";
 import type { BookingDraft } from "@/lib/booking/types";
 import type { PetDTO } from "@/lib/pet-queries";
 
@@ -20,8 +21,6 @@ export type BookingAgentContext = {
   /** Explicit place id from a "Book" button click. */
   presetPlaceId?: string;
 };
-
-const BOOKING_AGENT_MODEL = process.env.AI_AGENT_MODEL ?? "gpt-4o";
 
 const createBookingDraftTool = tool({
   name: "create_booking_draft",
@@ -128,7 +127,7 @@ export function buildBookingAgent(
 ): Agent<BookingAgentContext> {
   return new Agent<BookingAgentContext>({
     name: "Booking assistant",
-    model: BOOKING_AGENT_MODEL,
+    model: getAgentModel(),
     instructions: `${BASE_INSTRUCTIONS}\n\n${contextText}\n\n--- RECENT PLACES ---\n${recentPlacesNote}\n\n--- PRESET ---\n${presetNote}`,
     tools: [lookupPlaceTool, createBookingDraftTool],
   });

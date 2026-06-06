@@ -7,6 +7,7 @@ import {
   formatPriceRange,
   petTypeLabel,
 } from "@/lib/pet-data/format";
+import { getAgentModel } from "@/lib/ai/providers";
 import { type FoodResult, searchFood } from "@/lib/pet-data/search";
 
 export type { FoodProduct };
@@ -30,8 +31,6 @@ function toProduct(r: FoodResult): FoodProduct {
     url: r.url,
   };
 }
-
-const FOOD_AGENT_MODEL = process.env.AI_AGENT_MODEL ?? "gpt-4o";
 
 const searchFoodTool = tool({
   name: "search_food",
@@ -114,7 +113,7 @@ The app shows clickable product cards (name, price, buy button) for every produc
 export function buildFoodAgent(contextText: string): Agent<FoodAgentContext> {
   return new Agent<FoodAgentContext>({
     name: "Food Finder",
-    model: FOOD_AGENT_MODEL,
+    model: getAgentModel(),
     instructions: `${BASE_INSTRUCTIONS}\n\n${contextText}`,
     tools: [searchFoodTool],
   });

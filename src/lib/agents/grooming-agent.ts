@@ -2,6 +2,7 @@ import "server-only";
 
 import { Agent, tool } from "@openai/agents";
 import { z } from "zod";
+import { getAgentModel } from "@/lib/ai/providers";
 import type { ServicePlaceCard } from "@/lib/pet-data/format";
 import {
   postalToLatLng,
@@ -36,8 +37,6 @@ function toCard(p: ServicePlaceResult): ServicePlaceCard {
     kind: p.kind,
   };
 }
-
-const GROOMING_AGENT_MODEL = process.env.AI_AGENT_MODEL ?? "gpt-4o";
 
 const searchGroomersTool = tool({
   name: "search_groomers",
@@ -133,7 +132,7 @@ export function buildGroomingAgent(
 ): Agent<GroomingAgentContext> {
   return new Agent<GroomingAgentContext>({
     name: "Grooming Finder",
-    model: GROOMING_AGENT_MODEL,
+    model: getAgentModel(),
     instructions: `${BASE_INSTRUCTIONS}\n\n${contextText}\n\n--- LOCATION ---\n${locationNote}`,
     tools: [searchGroomersTool],
   });
