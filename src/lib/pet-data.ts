@@ -47,7 +47,7 @@ export const careLogItems = [
     subtitle: "1/2 cup hypoallergenic kibble",
     time: "08:00 AM",
     icon: Check,
-    tone: "bg-[#d5e3ff] text-[#2c4366]",
+    tone: "bg-secondary text-secondary-foreground",
     done: true,
   },
   {
@@ -55,7 +55,7 @@ export const careLogItems = [
     subtitle: "Monthly chewable",
     time: "",
     icon: ClipboardCheck,
-    tone: "bg-[#ff8da1] text-[#782338]",
+    tone: "bg-primary/15 text-primary ring-1 ring-primary/20",
     done: false,
   },
   {
@@ -63,7 +63,7 @@ export const careLogItems = [
     subtitle: "East Coast Park",
     time: "06:30 PM",
     icon: UserRound,
-    tone: "bg-[#f8f9fa] text-[#554244] border border-[#dac0c3]",
+    tone: "bg-muted text-muted-foreground ring-1 ring-border",
     done: false,
   },
 ];

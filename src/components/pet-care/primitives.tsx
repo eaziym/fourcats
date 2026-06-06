@@ -61,7 +61,7 @@ export function SpotlightCard({
   return (
     <Card
       className={cn(
-        "rb-spotlight-card rounded-2xl border-[#dac0c3]/40 bg-white py-0 shadow-[0_4px_20px_rgba(29,53,87,0.05)]",
+        "rb-spotlight-card rounded-2xl border-border/80 bg-card py-0 shadow-sm",
         className,
       )}
     >
