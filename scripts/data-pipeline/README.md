@@ -61,6 +61,23 @@ node scripts/data-pipeline/embed-knowledge.mjs            # all entity types
 
 Re-running any step is safe (idempotent upserts). `ingestion_runs` records each run.
 
+## Push to Supabase
+
+Develop locally, then mirror the pipeline tables (schema + data) to Supabase —
+no re-scraping, no re-embedding (the already-computed embeddings copy over).
+
+```bash
+# .env: set SUPABASE_DB_URL to your Supabase Postgres connection string
+pnpm db:push:supabase                 # schema + data (truncates target first, re-runnable)
+pnpm db:push:supabase --schema-only   # just (re)create tables/RPCs/pgvector
+pnpm db:push:supabase --data-only     # just reload data
+```
+
+It dumps from the local Docker DB and loads via the container's `psql` (so no
+host `psql` and no parsing of the `@` in the Supabase password). ⚠️ Same Prisma
+caveat applies on Supabase: don't run `prisma migrate dev`/`db push` there or it
+drops these tables — re-run `pnpm db:push:supabase --schema-only` to restore.
+
 ## Search layer (handoff to the agent)
 
 The agent's tools should call [`src/lib/pet-data/search.ts`](../../src/lib/pet-data/search.ts):

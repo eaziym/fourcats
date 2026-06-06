@@ -10,6 +10,7 @@
     "probe:products": "node scripts/data-pipeline/probe-product-providers.mjs",
     "db:apply:pipeline": "node scripts/data-pipeline/apply-sql.mjs scripts/data-pipeline/sql/pipeline-schema.sql",
     "db:check": "node scripts/data-pipeline/db-check.mjs",
+    "db:push:supabase": "node scripts/data-pipeline/push-to-supabase.mjs",
     "lint": "biome check",
     "format": "biome format --write"
   },
