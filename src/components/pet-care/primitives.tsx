@@ -1,0 +1,81 @@
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+
+export function Pill({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Badge
+      variant="secondary"
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border-0 px-3 py-1 text-xs font-medium",
+        className,
+      )}
+    >
+      {children}
+    </Badge>
+  );
+}
+
+export function FadeContent({
+  children,
+  delay = 0,
+  className,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn("rb-fade-content", className)}
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function AnimatedList({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <div className={cn("rb-animated-list", className)}>{children}</div>;
+}
+
+export function SpotlightCard({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Card
+      className={cn(
+        "rb-spotlight-card rounded-2xl border-[#dac0c3]/40 bg-white py-0 shadow-[0_4px_20px_rgba(29,53,87,0.05)]",
+        className,
+      )}
+    >
+      {children}
+    </Card>
+  );
+}
+
+export function ShinyText({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <span className={cn("rb-shiny-text", className)}>{children}</span>;
+}
