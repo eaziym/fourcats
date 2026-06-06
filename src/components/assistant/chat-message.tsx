@@ -4,11 +4,11 @@ import {
   Mail,
   Phone,
   ShoppingBag,
-  Sparkles,
   UserRound,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import { BrandMascot } from "@/components/pet-care/mascot";
 import { getAgentLabel } from "@/lib/agents/registry";
 import type { BookingDraft } from "@/lib/booking/types";
 import type { ChatMessageDTO } from "@/lib/chat/types";
@@ -152,7 +152,7 @@ function BookingDraftCard({ draft }: { draft: BookingDraft }) {
 function AssistantAvatar() {
   return (
     <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/20 shadow-sm ring-1 ring-primary/15">
-      <Sparkles aria-hidden className="size-4 text-primary" />
+      <BrandMascot size={40} />
     </div>
   );
 }
