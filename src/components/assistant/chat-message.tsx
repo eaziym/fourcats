@@ -10,6 +10,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import { DelegationActivity } from "@/components/assistant/delegation-activity";
 import { BrandMascot } from "@/components/pet-care/mascot";
+import { Spinner } from "@/components/ui/spinner";
 import { getAgentLabel } from "@/lib/agents/registry";
 import type { BookingDraft } from "@/lib/booking/types";
 import type { ChatMessageDTO, DelegationStepDTO } from "@/lib/chat/types";
@@ -261,6 +262,19 @@ export function ChatMessageView({
           <BookingDraftCard draft={data.bookingDraft} />
         </div>
       ) : null}
+    </div>
+  );
+}
+
+export function AssistantLoadingPane({ label }: { label: string }) {
+  return (
+    <div
+      aria-busy="true"
+      aria-live="polite"
+      className="m-auto flex flex-col items-center gap-3 py-16 text-center"
+    >
+      <Spinner className="size-6 text-primary" />
+      <p className="text-sm text-muted-foreground">{label}</p>
     </div>
   );
 }

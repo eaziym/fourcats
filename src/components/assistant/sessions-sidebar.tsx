@@ -3,14 +3,29 @@
 import { MessageSquarePlus, PanelLeftClose, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CollapsibleAssistantPanel } from "@/components/assistant/collapsible-assistant-panel";
+import { Spinner } from "@/components/ui/spinner";
 import type { ChatSessionSummary } from "@/lib/chat/types";
 import { cn } from "@/lib/utils";
+
+function SessionListLoading() {
+  return (
+    <div
+      aria-busy="true"
+      aria-live="polite"
+      className="flex flex-col items-center gap-2 px-2 py-8 text-center"
+    >
+      <Spinner className="size-4 text-muted-foreground" />
+      <p className="text-xs text-muted-foreground">Loading history…</p>
+    </div>
+  );
+}
 
 const STORAGE_KEY = "llp-assistant-sessions-collapsed";
 
 export function SessionsSidebar({
   sessions,
   activeId,
+  loading,
   onNew,
   onSelect,
   onDelete,
@@ -18,6 +33,7 @@ export function SessionsSidebar({
 }: {
   sessions: ChatSessionSummary[];
   activeId: string | null;
+  loading?: boolean;
   onNew: () => void;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
@@ -68,7 +84,7 @@ export function SessionsSidebar({
       <div className="p-3 pt-2">
         <button
           className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-60"
-          disabled={creating}
+          disabled={creating || loading}
           onClick={onNew}
           type="button"
         >
@@ -77,7 +93,9 @@ export function SessionsSidebar({
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
-        {sessions.length === 0 ? (
+        {loading ? (
+          <SessionListLoading />
+        ) : sessions.length === 0 ? (
           <p className="px-2 py-3 text-sm text-muted-foreground">
             No conversations yet. Start a new chat.
           </p>

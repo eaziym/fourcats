@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import {
   ChatMessageView,
+  AssistantLoadingPane,
   PendingMessage,
 } from "@/components/assistant/chat-message";
 import { ContextSidebar } from "@/components/assistant/context-sidebar";
@@ -195,12 +196,19 @@ function geolocationFailureMessage(
 function AssistantPageInner() {
   const { pet } = usePetCare();
   const searchParams = useSearchParams();
-  const bootstrappedRef = useRef(false);
   const autoSendHandledRef = useRef<Set<string>>(new Set());
+  const sessionIdRef = useRef<string | null>(null);
 
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  sessionIdRef.current = sessionId;
+
+  const selectSession = useCallback((id: string | null) => {
+    sessionIdRef.current = id;
+    setSessionId(id);
+  }, []);
   const [messages, setMessages] = useState<ChatMessageDTO[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(true);
   const [loadingSession, setLoadingSession] = useState(false);
   const [creating, setCreating] = useState(false);
 
@@ -381,83 +389,112 @@ function AssistantPageInner() {
   );
 
   useEffect(() => {
-    const q = searchParams.get("q")?.trim();
-    const auto = searchParams.get("auto") === "1";
-    if (!q || !auto) return;
+    let cancelled = false;
 
-    const dedupeKey = `${q}::${searchParams.get("t") ?? ""}`;
-    if (autoSendHandledRef.current.has(dedupeKey)) return;
-    autoSendHandledRef.current.add(dedupeKey);
-    bootstrappedRef.current = true;
-
-    // Strip params so refresh/back doesn't re-send. This updates searchParams and
-    // re-runs this effect, but we must not cancel the async work below — only the
-    // dedupe set prevents a second send for the same navigation token.
-    window.history.replaceState(null, "", "/assistant");
+    async function refreshSessionList() {
+      const list = await listChatSessions();
+      if (!cancelled) setSessions(list);
+      return list;
+    }
 
     void (async () => {
-      try {
-        setLoadingSession(true);
-        setError(null);
+      const q = searchParams.get("q")?.trim();
+      const auto = searchParams.get("auto") === "1";
 
-        const s = await createChatSession();
-        if (!s) {
-          setError("Couldn't start a chat. Please sign in again.");
+      if (q && auto) {
+        const dedupeKey = `${q}::${searchParams.get("t") ?? ""}`;
+        if (autoSendHandledRef.current.has(dedupeKey)) {
+          try {
+            setLoadingSessions(true);
+            await refreshSessionList();
+          } catch (err) {
+            if (!cancelled) {
+              setError(
+                err instanceof Error
+                  ? err.message
+                  : "Couldn't load chat history.",
+              );
+            }
+          } finally {
+            if (!cancelled) setLoadingSessions(false);
+          }
           return;
         }
 
-        const list = await listChatSessions();
-        setSessions([s, ...list.filter((item) => item.id !== s.id)]);
-        setSessionId(s.id);
-        setMessages([]);
-        setLoadingSession(false);
+        autoSendHandledRef.current.add(dedupeKey);
 
-        await executeSend(q, { sid: s.id, priorMessages: [] });
+        try {
+          setLoadingSessions(true);
+          setLoadingSession(true);
+          setError(null);
+
+          const s = await createChatSession();
+          if (!s) {
+            setError("Couldn't start a chat. Please sign in again.");
+            return;
+          }
+
+          const list = await listChatSessions();
+          if (cancelled) return;
+          setSessions([s, ...list.filter((item) => item.id !== s.id)]);
+          selectSession(s.id);
+          setMessages([]);
+          setLoadingSessions(false);
+          setLoadingSession(false);
+
+          window.history.replaceState(null, "", "/assistant");
+
+          await executeSend(q, { sid: s.id, priorMessages: [] });
+        } catch (err) {
+          if (!cancelled) {
+            setError(
+              err instanceof Error ? err.message : "Something went wrong.",
+            );
+          }
+        } finally {
+          if (!cancelled) {
+            setLoadingSessions(false);
+            setLoadingSession(false);
+          }
+        }
+        return;
+      }
+
+      try {
+        if (!sessionIdRef.current) setLoadingSessions(true);
+        const list = await refreshSessionList();
+        if (cancelled) return;
+
+        if (q) {
+          window.history.replaceState(null, "", "/assistant");
+          setInput(q);
+        }
+
+        if (list.length > 0 && !sessionIdRef.current) {
+          const idToLoad = list[0].id;
+          selectSession(idToLoad);
+          setLoadingSession(true);
+          const msgs = await loadChatSession(idToLoad);
+          if (!cancelled) setMessages(msgs ?? []);
+        }
       } catch (err) {
-        const msg =
-          err instanceof Error ? err.message : "Something went wrong.";
-        setError(msg);
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : "Couldn't load chat history.",
+          );
+        }
       } finally {
-        setLoadingSession(false);
-      }
-    })();
-  }, [searchParams, executeSend]);
-
-  useEffect(() => {
-    if (bootstrappedRef.current) return;
-
-    const q = searchParams.get("q")?.trim();
-    const auto = searchParams.get("auto") === "1";
-    if (q && auto) return;
-
-    bootstrappedRef.current = true;
-    let active = true;
-
-    void (async () => {
-      const list = await listChatSessions();
-      if (!active) return;
-      setSessions(list);
-
-      if (q) {
-        window.history.replaceState(null, "", "/assistant");
-        setInput(q);
-      }
-
-      if (list.length > 0) {
-        setLoadingSession(true);
-        setSessionId(list[0].id);
-        const msgs = await loadChatSession(list[0].id);
-        if (active) {
-          setMessages(msgs ?? []);
+        if (!cancelled) {
+          setLoadingSessions(false);
           setLoadingSession(false);
         }
       }
     })();
 
     return () => {
-      active = false;
+      cancelled = true;
     };
-  }, [searchParams]);
+  }, [searchParams, executeSend, selectSession]);
 
   const scrollKey = `${messages.length}-${pendingSteps?.length ?? 0}-${bookingPending}-${sessionId}`;
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll when transcript changes
@@ -468,14 +505,58 @@ function AssistantPageInner() {
     });
   }, [scrollKey]);
 
+  // No saved postal → fall back to browser GPS (same priority as Local Discovery).
+  useEffect(() => {
+    if (savedAreaLabel) return;
+    if (!("geolocation" in navigator)) return;
+
+    let active = true;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (!active) return;
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocationNotice(null);
+        setLocating(false);
+      },
+      (geoError) => {
+        if (!active) return;
+        setLocating(false);
+        setCoords(null);
+        if (geoError.code === 1) {
+          setLocationNotice(
+            "Location access is blocked. Add a postal code in Pet Profiles for nearby search.",
+          );
+        } else {
+          setLocationNotice(
+            "Couldn't get your location. Add a postal code in Pet Profiles for nearby search.",
+          );
+        }
+      },
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 },
+    );
+
+    return () => {
+      active = false;
+    };
+  }, [savedAreaLabel]);
+
   async function openSession(id: string) {
     if (id === sessionId || busy) return;
     setLoadingSession(true);
-    setSessionId(id);
+    selectSession(id);
+    setMessages([]);
     setError(null);
-    const msgs = await loadChatSession(id);
-    setMessages(msgs ?? []);
-    setLoadingSession(false);
+    try {
+      const msgs = await loadChatSession(id);
+      setMessages(msgs ?? []);
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Couldn't load this conversation.";
+      setError(msg);
+    } finally {
+      setLoadingSession(false);
+    }
   }
 
   async function handleNewChat() {
@@ -488,7 +569,7 @@ function AssistantPageInner() {
       return;
     }
     setSessions((prev) => [s, ...prev]);
-    setSessionId(s.id);
+    selectSession(s.id);
     setMessages([]);
     setError(null);
   }
@@ -498,7 +579,7 @@ function AssistantPageInner() {
     if (!ok) return;
     setSessions((prev) => prev.filter((s) => s.id !== id));
     if (id === sessionId) {
-      setSessionId(null);
+      selectSession(null);
       setMessages([]);
     }
   }
@@ -619,7 +700,7 @@ function AssistantPageInner() {
         return;
       }
       setSessions((prev) => [s, ...prev]);
-      setSessionId(s.id);
+      selectSession(s.id);
       sid = s.id;
     }
 
@@ -673,7 +754,7 @@ function AssistantPageInner() {
         return;
       }
       setSessions((prev) => [s, ...prev]);
-      setSessionId(s.id);
+      selectSession(s.id);
       sid = s.id;
       priorMessages = [];
     }
@@ -694,6 +775,7 @@ function AssistantPageInner() {
         <SessionsSidebar
           activeId={sessionId}
           creating={creating}
+          loading={loadingSessions}
           onDelete={handleDeleteSession}
           onNew={handleNewChat}
           onSelect={openSession}
@@ -707,9 +789,7 @@ function AssistantPageInner() {
           >
             <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6">
               {loadingSession && isEmpty && !busy ? (
-                <p className="m-auto text-sm text-muted-foreground">
-                  {sessionId ? "Loading conversation…" : "Starting a new chat…"}
-                </p>
+                <AssistantLoadingPane label="Loading conversation…" />
               ) : isEmpty ? (
                 <div className="m-auto max-w-md text-center">
                   <h2 className="font-llp-display text-2xl font-bold text-foreground">
@@ -801,7 +881,15 @@ function AssistantPageInner() {
               ) : savedAreaLabel ? (
                 <div className="flex items-center gap-2 self-start rounded-full border border-border bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground">
                   <MapPin className="size-4 shrink-0" />
-                  <span>Nearby search uses {savedAreaLabel}</span>
+                  <span>
+                    Using {pet?.name ?? "pet"}&apos;s profile area ·{" "}
+                    {savedAreaLabel}
+                  </span>
+                </div>
+              ) : locating ? (
+                <div className="flex items-center gap-2 self-start rounded-full border border-border bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground">
+                  <MapPin className="size-4 shrink-0 animate-pulse" />
+                  <span>Finding your location…</span>
                 </div>
               ) : null}
 
@@ -830,7 +918,13 @@ function AssistantPageInner() {
                   )}
                   disabled={locating}
                   onClick={handleUseLocation}
-                  title="Use your current location"
+                  title={
+                    coords
+                      ? "Using your current location"
+                      : savedAreaLabel
+                        ? "Switch to your current location"
+                        : "Use your current location"
+                  }
                   type="button"
                 >
                   {locating ? (

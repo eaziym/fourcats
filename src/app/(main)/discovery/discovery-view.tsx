@@ -207,14 +207,18 @@ export function DiscoveryView({
           setPage(1);
           setSelectedId(null);
         } else {
+          setDiscoveryData(null);
           setLocationNotice(
-            "GPS fix is outside Singapore — showing your saved area instead.",
+            origin
+              ? "GPS fix is outside Singapore — showing your pet's saved area instead."
+              : "GPS fix is outside Singapore.",
           );
         }
         setLocating(false);
       },
       (geoError) => {
         setLocating(false);
+        setDiscoveryData(null);
         const savedLabel = origin?.label;
         if (savedLabel) {
           setLocationNotice(
@@ -232,11 +236,13 @@ export function DiscoveryView({
       },
       { enableHighAccuracy: false, timeout: 15000, maximumAge: 60_000 },
     );
-  }, [origin?.label]);
+  }, [origin]);
 
+  // Pet profile postal code is the default anchor; only fall back to GPS when none is saved.
   useEffect(() => {
+    if (origin) return;
     refreshWithGps();
-  }, [refreshWithGps]);
+  }, [origin, refreshWithGps]);
 
   const isFood = tab === "food";
 
@@ -371,7 +377,11 @@ export function DiscoveryView({
               type="button"
               variant="outline"
             >
-              {locating ? "Locating…" : "Update location"}
+              {locating
+                ? "Locating…"
+                : currentOrigin?.source === "gps"
+                  ? "Update location"
+                  : "Use current location"}
             </Button>
           </div>
           {locationNotice ? (

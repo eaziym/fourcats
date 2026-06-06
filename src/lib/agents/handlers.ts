@@ -38,7 +38,7 @@ import {
   buildRecommendationContext,
   buildUserSettingsPrompt,
 } from "@/lib/pet-data/format";
-import { postalToLatLng } from "@/lib/pet-data/search";
+import { postalToLatLng, resolvePostalToLatLng } from "@/lib/pet-data/search";
 import { getPetCareContext } from "@/lib/pet-queries";
 import {
   buildObjectKey,
@@ -240,7 +240,9 @@ export async function runGroomingAgent(args: {
     lng = args.lng;
     locationNote = "Using the user's shared current location (browser GPS).";
   } else if (pet?.locationPostalCode) {
-    const coords = postalToLatLng(pet.locationPostalCode);
+    const postal = pet.locationPostalCode.trim();
+    const coords =
+      (await resolvePostalToLatLng(postal)) ?? postalToLatLng(postal);
     if (coords) {
       lat = coords.lat;
       lng = coords.lng;
@@ -314,7 +316,9 @@ export async function runVetAgent(args: {
     lng = args.lng;
     locationNote = "Using the user's shared current location (browser GPS).";
   } else if (pet?.locationPostalCode) {
-    const coords = postalToLatLng(pet.locationPostalCode);
+    const postal = pet.locationPostalCode.trim();
+    const coords =
+      (await resolvePostalToLatLng(postal)) ?? postalToLatLng(postal);
     if (coords) {
       lat = coords.lat;
       lng = coords.lng;
