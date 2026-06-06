@@ -10,7 +10,7 @@
  * dependency on the app's Prisma client. Swap to Prisma $queryRaw if preferred.
  */
 import OpenAI from "openai";
-import { Pool } from "pg";
+import { getPgPool } from "@/lib/pg-pool";
 
 const EMBEDDING_MODEL = "text-embedding-3-small";
 const ONEMAP_AUTH_URL = "https://www.onemap.gov.sg/api/auth/post/getToken";
@@ -18,21 +18,10 @@ const ONEMAP_SEARCH_URL = "https://www.onemap.gov.sg/api/common/elastic/search";
 
 type LatLng = { lat: number; lng: number };
 
-let pool: Pool | undefined;
-function getPool(): Pool {
-  if (!pool) {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) throw new Error("DATABASE_URL is not set");
-    const isLocal = /@(localhost|127\.0\.0\.1|0\.0\.0\.0)[:/]/.test(
-      connectionString,
-    );
-    pool = new Pool({
-      connectionString,
-      ssl: isLocal ? false : { rejectUnauthorized: false },
-      max: 4,
-    });
-  }
-  return pool;
+// Shares the app-wide pool (src/lib/pg-pool.ts) so raw pgvector/geo queries and
+// Prisma don't open separate connection pools against Supabase's limit.
+function getPool() {
+  return getPgPool();
 }
 
 let openai: OpenAI | undefined;

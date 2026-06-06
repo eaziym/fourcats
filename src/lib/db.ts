@@ -1,17 +1,17 @@
 import "dotenv/config";
 import { PrismaClient } from "@generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { getPgPool } from "@/lib/pg-pool";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
 function createPrismaClient(): PrismaClient {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error("DATABASE_URL is not set");
-  }
-  const adapter = new PrismaPg({ connectionString });
+  // Reuse the single shared pool (see src/lib/pg-pool.ts) so Prisma and the raw
+  // pgvector queries together stay under Supabase's connection limit.
+  // disposeExternalPool:false keeps the pool alive for the other consumers.
+  const adapter = new PrismaPg(getPgPool(), { disposeExternalPool: false });
   return new PrismaClient({ adapter });
 }
 
