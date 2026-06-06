@@ -19,7 +19,7 @@ export function ChatInput({
     : "Ask about your pet's health, diet, or local services...";
 
   return (
-    <div className="border-t border-[#dac0c3]/30 bg-gradient-to-t from-background via-background to-transparent p-5 md:px-10">
+    <div className="border-t border-[#dac0c3]/30 bg-linear-to-t from-background via-background to-transparent p-5 md:px-10">
       <form
         onSubmit={onSubmit}
         className="mx-auto flex max-w-3xl items-center gap-2 rounded-full border border-[#dac0c3]/50 bg-white/70 px-3 py-1.5 shadow-lg backdrop-blur-md transition-colors focus-within:border-primary dark:bg-card/70"
