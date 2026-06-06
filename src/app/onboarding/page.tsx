@@ -1,5 +1,5 @@
-import { BrandWordmark } from "@/components/pet-care/brand-wordmark";
 import { AuthScreen } from "@/components/auth/auth-screen";
+import { BrandWordmark } from "@/components/pet-care/brand-wordmark";
 import { ensureOnboardingAccess } from "@/lib/auth/server";
 import { OnboardingForm } from "./onboarding-form";
 
@@ -20,8 +20,8 @@ export default async function OnboardingPage() {
             Let&apos;s add your pet
           </h1>
           <p className="mt-3 max-w-lg text-lg text-muted-foreground">
-            You need at least one pet profile to continue. You can add more
-            details later from Pet profiles.
+            Add the core care details so recommendations can start with your
+            pet&apos;s real profile.
           </p>
         </header>
         <OnboardingForm />
