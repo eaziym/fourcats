@@ -20,14 +20,13 @@ export function petPlaceholderImage(species: string): string {
   return species.toLowerCase() === "cat" ? petPortrait : mochiPortrait;
 }
 
-export const beaglePortrait =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuCv94TFws-tNGWP412mfGDKxzJ2Z4XByL8qakxZsbZ7ckBtXI3brbpNhp5Qu2BI3ADK4E8nhzFQG4G3AaFFpFxoCUfLmTNNETF2Jr-84LyG9d2O_9JwIM3yMg5lR6n5JAPXmpTNomZGI9a1EF0TdpACAflvKptgWs9JzLI04LY4q39Wb61r3GFrwmrzBQyRakJTmDB21y-yN-JL7tSLC3GIOTgANmiVgT-VVv04qrnxSnFrEs-rTDAoncMHvq1YY9rr3-f0g0loxibP";
-
-export const groomerInterior =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuAlLKuZPIhuJM2C0jxueuLSLdneouU7Gor2PjNGg7b7Lh4fJk1AX3pPpY7vuWuq7nD75zK-0Fy5H2ihq-V6fBAfd1_W0E6p22O1LZiJWj9yh7kT6p0dUtzqhy94LYEAlVeO-w0wz2M0pQjcZP8aV2xb-u3FGxj9cFyaDnk6Vxw_Vd_fqIvR2Zdhwx08TEqev5O5Sxb1oYIX-rca5KIz8YF46RLMJ8OgQ63XsCfQ4aM6YjQRm8VOiVYG2c_mepLMwCA-Lv-Bp4xFMHU";
-
-export const uploadDog =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuBDns6lVMF2hdG1OHEC4sXq75t76bgKwMKft85OPru7uDfoEIVcvDoS7Lily-SUAdRiZV0vDKpQ8qR2B5YLIUmvEbDXFM9kcQG0wFU3OeYnOwZJ0FA_XuL0FvOlK_mc92ElLXZy5FPFbxaMVLB03RT0yvI4zVUslho91BHnWzCceCD8xwELNwBGRj9I_JW2eFBDg3iW7tnhsYkh1shIt-fpzVuYQ9q8RbRj0SPz_SsroX3s9v6LTx0cWG_n3_84LBY3WNJ_2iJQyBSs";
+/** Resolved pet avatar: uploaded photo when present, species stock art otherwise. */
+export function petAvatarSrc(pet: {
+  photoUrl: string | null;
+  species: string;
+}): string {
+  return pet.photoUrl ?? petPlaceholderImage(pet.species);
+}
 
 export const navItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/" },

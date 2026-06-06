@@ -84,6 +84,16 @@ function pawMarkerIcon({
   });
 }
 
+function userLocationIcon(): DivIcon {
+  return divIcon({
+    className: "discovery-user-location",
+    html: `<span class="discovery-user-location__ring" aria-hidden="true"></span><span class="discovery-user-location__dot" aria-hidden="true"></span>`,
+    iconAnchor: [11, 11],
+    iconSize: [22, 22],
+    tooltipAnchor: [0, -8],
+  });
+}
+
 type Located = PlaceDTO & { lat: number; lng: number };
 
 function located(places: PlaceDTO[]): Located[] {
@@ -178,10 +188,16 @@ export default function DiscoveryMap({
 
       {origin ? (
         <Marker
-          icon={pawMarkerIcon({ colors, isOrigin: true })}
+          icon={
+            origin.source === "gps"
+              ? userLocationIcon()
+              : pawMarkerIcon({ colors, isOrigin: true })
+          }
           position={[origin.lat, origin.lng]}
         >
-          <Tooltip>{origin.label}</Tooltip>
+          <Tooltip permanent={origin.source === "gps"} direction="top">
+            {origin.label}
+          </Tooltip>
         </Marker>
       ) : null}
 

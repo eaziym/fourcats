@@ -83,12 +83,36 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
-let autoSendInFlight: string | null = null;
+function formatSavedAreaLabel(pet: {
+  name: string;
+  locationPostalCode?: string | null;
+  locationLabel?: string | null;
+}): string | null {
+  const postal = pet.locationPostalCode?.trim();
+  if (!postal) return null;
+  const label = pet.locationLabel?.trim();
+  return label ? `${label} (${postal})` : `postal ${postal}`;
+}
+
+function geolocationFailureMessage(
+  code: number | undefined,
+  savedArea: string,
+  petName: string,
+): string {
+  if (code === 1) {
+    return `Location access is blocked. Nearby results will use ${petName}'s saved area (${savedArea}).`;
+  }
+  if (code === 3) {
+    return `Location timed out. Nearby results will use ${petName}'s saved area (${savedArea}).`;
+  }
+  return `Couldn't get GPS. Nearby results will use ${petName}'s saved area (${savedArea}).`;
+}
 
 function AssistantPageInner() {
   const { pet } = usePetCare();
   const searchParams = useSearchParams();
   const bootstrappedRef = useRef(false);
+  const autoSendHandledRef = useRef<Set<string>>(new Set());
 
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -109,6 +133,9 @@ function AssistantPageInner() {
   const [bookingPlaceId, setBookingPlaceId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [locationNotice, setLocationNotice] = useState<string | null>(null);
+
+  const savedAreaLabel = pet ? formatSavedAreaLabel(pet) : null;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -253,12 +280,14 @@ function AssistantPageInner() {
     const auto = searchParams.get("auto") === "1";
     if (!q || !auto) return;
 
-    const dedupeKey = `${q}::${searchParams.get("t") ?? "0"}`;
-    if (autoSendInFlight === dedupeKey) return;
-    autoSendInFlight = dedupeKey;
+    const dedupeKey = `${q}::${searchParams.get("t") ?? ""}`;
+    if (autoSendHandledRef.current.has(dedupeKey)) return;
+    autoSendHandledRef.current.add(dedupeKey);
     bootstrappedRef.current = true;
 
-    let active = true;
+    // Strip params so refresh/back doesn't re-send. This updates searchParams and
+    // re-runs this effect, but we must not cancel the async work below — only the
+    // dedupe set prevents a second send for the same navigation token.
     window.history.replaceState(null, "", "/assistant");
 
     void (async () => {
@@ -267,32 +296,26 @@ function AssistantPageInner() {
         setError(null);
 
         const s = await createChatSession();
-        if (!active) return;
         if (!s) {
           setError("Couldn't start a chat. Please sign in again.");
-          setLoadingSession(false);
           return;
         }
 
         const list = await listChatSessions();
-        if (!active) return;
-
         setSessions([s, ...list.filter((item) => item.id !== s.id)]);
         setSessionId(s.id);
         setMessages([]);
         setLoadingSession(false);
 
         await executeSend(q, { sid: s.id, priorMessages: [] });
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : "Something went wrong.";
+        setError(msg);
       } finally {
-        if (autoSendInFlight === dedupeKey) {
-          autoSendInFlight = null;
-        }
+        setLoadingSession(false);
       }
     })();
-
-    return () => {
-      active = false;
-    };
   }, [searchParams, executeSend]);
 
   useEffect(() => {
@@ -381,19 +404,38 @@ function AssistantPageInner() {
       return;
     }
     setError(null);
+    setLocationNotice(null);
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocationNotice(null);
         setLocating(false);
       },
-      () => {
+      (geoError) => {
         setLocating(false);
+        setCoords(null);
+        if (pet && savedAreaLabel) {
+          setLocationNotice(
+            geolocationFailureMessage(
+              geoError.code,
+              savedAreaLabel,
+              pet.name,
+            ),
+          );
+          return;
+        }
+        if (geoError.code === 1) {
+          setError(
+            "Location access is blocked. Add a postal code in Pet Profiles for nearby search.",
+          );
+          return;
+        }
         setError(
-          "Couldn't get your location — I'll use your pet's saved area instead.",
+          "Couldn't get your location. Add a postal code in Pet Profiles for nearby search.",
         );
       },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 },
     );
   }
 
@@ -559,9 +601,9 @@ function AssistantPageInner() {
             ref={scrollRef}
           >
             <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6">
-              {loadingSession ? (
+              {loadingSession && isEmpty && !busy ? (
                 <p className="m-auto text-sm text-muted-foreground">
-                  Loading conversation…
+                  {sessionId ? "Loading conversation…" : "Starting a new chat…"}
                 </p>
               ) : isEmpty ? (
                 <div className="m-auto max-w-md text-center">
@@ -611,6 +653,12 @@ function AssistantPageInner() {
                 </p>
               ) : null}
 
+              {locationNotice ? (
+                <p className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+                  {locationNotice}
+                </p>
+              ) : null}
+
               {file ? (
                 <div className="flex items-center gap-2 self-start rounded-full border border-border bg-card px-3 py-1.5 text-sm">
                   <ImagePlus className="size-4 text-primary" />
@@ -636,11 +684,19 @@ function AssistantPageInner() {
                   <button
                     aria-label="Clear location"
                     className="rounded-full p-0.5 text-primary/70 hover:text-destructive"
-                    onClick={() => setCoords(null)}
+                    onClick={() => {
+                      setCoords(null);
+                      setLocationNotice(null);
+                    }}
                     type="button"
                   >
                     <X className="size-3.5" />
                   </button>
+                </div>
+              ) : savedAreaLabel ? (
+                <div className="flex items-center gap-2 self-start rounded-full border border-border bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground">
+                  <MapPin className="size-4 shrink-0" />
+                  <span>Nearby search uses {savedAreaLabel}</span>
                 </div>
               ) : null}
 

@@ -12,6 +12,7 @@ import {
   Star,
   Stethoscope,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import {
   CircleMarker,
@@ -23,6 +24,12 @@ import {
 import type { ServicePlaceCard } from "@/lib/pet-data/format";
 
 const SG_CENTER: LatLngExpression = [1.3521, 103.8198];
+const TILE_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+const TILE_URLS = {
+  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+};
 
 type LocatedPlace = ServicePlaceCard & { lat: number; lng: number };
 
@@ -89,9 +96,9 @@ function PlacePopupContent({
           ) : null}
         </div>
       </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-foreground">
         {place.rating != null ? (
-          <span className="inline-flex items-center gap-1 font-semibold">
+          <span className="inline-flex items-center gap-1 font-semibold text-foreground">
             <Star className="size-3 fill-amber-400 text-amber-400" />
             {place.rating.toFixed(1)}
             {place.reviewCount != null ? (
@@ -110,7 +117,7 @@ function PlacePopupContent({
         <div className="flex flex-wrap gap-1">
           {tags.map((t) => (
             <span
-              className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+              className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-foreground/80"
               key={t}
             >
               {t}
@@ -121,7 +128,7 @@ function PlacePopupContent({
       <div className="flex flex-wrap gap-1.5 pt-0.5">
         {place.phone ? (
           <a
-            className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold hover:bg-muted"
+            className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-foreground hover:bg-muted"
             href={`tel:${place.phone}`}
           >
             <Phone className="size-3" />
@@ -130,7 +137,7 @@ function PlacePopupContent({
         ) : null}
         {place.googleMapsUrl ? (
           <a
-            className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground"
+            className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/20 dark:border-transparent dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
             href={place.googleMapsUrl}
             rel="noopener noreferrer"
             target="_blank"
@@ -141,7 +148,7 @@ function PlacePopupContent({
         ) : null}
         {place.websiteUrl ? (
           <a
-            className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold hover:bg-muted"
+            className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-foreground hover:bg-muted"
             href={place.websiteUrl}
             rel="noopener noreferrer"
             target="_blank"
@@ -213,6 +220,9 @@ export function PlacesMap({
 
   const pts = located(resolved);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const tileUrl = isDark ? TILE_URLS.dark : TILE_URLS.light;
   const Icon = variant === "vet" ? Stethoscope : Scissors;
   const unmapped = resolved.filter(
     (p) => num(p.lat) == null || num(p.lng) == null,
@@ -245,14 +255,17 @@ export function PlacesMap({
       <div className="overflow-hidden rounded-2xl border border-border shadow-[var(--llp-sh-1)]">
         <MapContainer
           center={center}
-          className="h-72 w-full"
+          className="assistant-places-map h-72 w-full"
           scrollWheelZoom={false}
           style={{ background: "var(--muted)" }}
           zoom={13}
         >
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution={TILE_ATTRIBUTION}
+            detectRetina
+            key={tileUrl}
+            maxZoom={19}
+            url={tileUrl}
           />
           {pts.map((p) => {
             const isSelected = p.id === selectedId;

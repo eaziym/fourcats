@@ -1,0 +1,36 @@
+{
+  "templates": [
+    {
+      "id": "standing-cat",
+      "name": "Standing plea",
+      "file": "cat-standing.jpg",
+      "description": "Pet standing upright on hind legs with wide innocent eyes and a sticker-style border. Pleading, guilty, or \"please?\" energy.",
+      "stylePrompt": "Pet standing on hind legs like a small guilty or pleading animal, wide innocent eyes, optional white rounded sticker border, wholesome meme composition centered on the pet.",
+      "captionHints": ["please can I have", "when you ask for one more treat", "look what I did"]
+    },
+    {
+      "id": "thinking-dog",
+      "name": "Thinking hands",
+      "file": "chihuahua-meme.jpg",
+      "description": "Tight close-up of a pet face with small cartoon hands clasped under the chin in a plotting or deep-thought pose.",
+      "stylePrompt": "Close-up pet face with small human hands clasped under the chin in a thinking or scheming pose, warm low-fi meme aesthetic, solemn expression.",
+      "captionHints": ["me calculating", "me plotting", "when you realize"]
+    },
+    {
+      "id": "dog-in-me",
+      "name": "The dog in me",
+      "file": "hilarious-chihuahua-dog-meme.jpeg",
+      "description": "Bold setup line at the top, a smaller \"the dog:\" label, then an ironic cute pet photo as the punchline.",
+      "stylePrompt": "Two-part text meme: bold white caption with thick black outline at the top (tough or confident setup quote), smaller \"the dog:\" label, then the pet photo as an ironic punchline that contrasts the caption.",
+      "captionHints": ["I got that dog in me", "the dog:"]
+    },
+    {
+      "id": "swag-cat",
+      "name": "Swag / no thoughts",
+      "file": "swag-cat-swagbilli-cutecat-cats-cat-swag-ok-yooo-yo.gif",
+      "description": "Derpy close-up with tongue blep and a casual shaka-hand emoji overlay. Chaotic wholesome vibes.",
+      "stylePrompt": "Derpy close-up pet face with tongue slightly out, wide confused eyes, optional yellow shaka/call-me hand emoji overlay, grainy viral meme energy.",
+      "captionHints": ["no thoughts head empty", "just vibing", "ok yooo"]
+    }
+  ]
+}

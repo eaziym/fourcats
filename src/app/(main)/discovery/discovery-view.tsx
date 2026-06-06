@@ -36,8 +36,9 @@ import type {
   PlaceDTO,
   ProductDTO,
 } from "@/lib/discovery-queries";
-import { petPlaceholderImage } from "@/lib/pet-data";
+import { petAvatarSrc } from "@/lib/pet-data";
 import { cn } from "@/lib/utils";
+import { loadDiscoveryAtCoords } from "./actions";
 
 const DiscoveryMap = dynamic(() => import("./discovery-map"), {
   ssr: false,
@@ -52,6 +53,7 @@ type Tab = "groomer" | "vet" | "pet_store" | "cafe" | "food";
 type PetSummary = {
   name: string;
   species: string;
+  photoUrl: string | null;
   medicalConditions: string[];
 };
 
@@ -172,6 +174,58 @@ export function DiscoveryView({
   const [radiusKm, setRadiusKm] = useState(DEFAULT_RADIUS_KM);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  const refreshWithGps = useCallback(() => {
+    if (!("geolocation" in navigator)) {
+      setLocationNotice("Location isn't available in this browser.");
+      setLocating(false);
+      return;
+    }
+
+    setLocating(true);
+    setLocationNotice(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const next = await loadDiscoveryAtCoords(
+          pos.coords.latitude,
+          pos.coords.longitude,
+        );
+        if (next) {
+          setDiscoveryData(next);
+          setPage(1);
+          setSelectedId(null);
+        } else {
+          setLocationNotice(
+            "GPS fix is outside Singapore — showing your saved area instead.",
+          );
+        }
+        setLocating(false);
+      },
+      (geoError) => {
+        setLocating(false);
+        const savedLabel = initialData.origin?.label;
+        if (savedLabel) {
+          setLocationNotice(
+            geoError.code === 1
+              ? `Location access blocked — showing listings ${savedLabel}.`
+              : `Couldn't get GPS — showing listings ${savedLabel}.`,
+          );
+          return;
+        }
+        setLocationNotice(
+          geoError.code === 1
+            ? "Allow location access to see nearby services on the map."
+            : "Couldn't get your location. Add a postal code in Pet Profiles.",
+        );
+      },
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 60_000 },
+    );
+  }, [initialData.origin?.label]);
+
+  useEffect(() => {
+    refreshWithGps();
+  }, [refreshWithGps]);
+
   const isFood = tab === "food";
 
   // Resolved places for the active non-food tab (undefined while loading).
@@ -202,11 +256,11 @@ export function DiscoveryView({
     if (isFood || !activePlaces) return [];
     const matched = q
       ? activePlaces.filter(
-          (p) =>
-            p.name.toLowerCase().includes(q) ||
-            p.neighbourhood?.toLowerCase().includes(q) ||
-            p.serviceTags.some((t) => t.toLowerCase().includes(q)),
-        )
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.neighbourhood?.toLowerCase().includes(q) ||
+          p.serviceTags.some((t) => t.toLowerCase().includes(q)),
+      )
       : activePlaces;
     return [...matched].sort(sortByDistance);
   }, [isFood, activePlaces, q]);
@@ -280,6 +334,37 @@ export function DiscoveryView({
               ? `Food picks for ${pet.name}.`
               : `Trusted ${activeLabel} ${near}.`}
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {discoveryData.origin ? (
+              <Pill
+                className={cn(
+                  discoveryData.origin.source === "gps" &&
+                  "border-primary/30 bg-primary/10 text-primary",
+                )}
+              >
+                <MapPin className="size-3.5" />
+                {discoveryData.origin.label}
+              </Pill>
+            ) : locating ? (
+              <Pill>
+                <Radar className="size-3.5 animate-spin" />
+                Finding your location…
+              </Pill>
+            ) : null}
+            <Button
+              className="h-7 rounded-full px-3 text-xs"
+              disabled={locating}
+              onClick={refreshWithGps}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              {locating ? "Locating…" : "Update location"}
+            </Button>
+          </div>
+          {locationNotice ? (
+            <p className="mt-2 text-xs text-muted-foreground">{locationNotice}</p>
+          ) : null}
           <div className="relative mt-4">
             <Search className="absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -298,7 +383,7 @@ export function DiscoveryView({
             <Avatar className="size-9">
               <AvatarImage
                 alt={pet.name}
-                src={petPlaceholderImage(pet.species)}
+                src={petAvatarSrc(pet)}
               />
               <AvatarFallback>
                 {pet.name.slice(0, 1).toUpperCase()}
@@ -446,6 +531,11 @@ export function DiscoveryView({
           selectedId={selectedId}
           onSelect={setSelectedId}
         />
+        {!isFood && discoveryData.origin?.source === "gps" ? (
+          <div className="pointer-events-none absolute left-1/2 top-4 z-[1000] -translate-x-1/2 rounded-full bg-card/90 px-4 py-1.5 text-xs font-medium text-primary shadow backdrop-blur">
+            Blue dot = your current location
+          </div>
+        ) : null}
         {isFood ? (
           <div className="pointer-events-none absolute left-1/2 top-4 z-[1000] -translate-x-1/2 rounded-full bg-card/90 px-4 py-1.5 text-xs font-medium text-muted-foreground shadow backdrop-blur">
             Kohepets is online-only; map shows your area
@@ -535,9 +625,9 @@ function ListingCard({
         className={cn(
           "w-full overflow-hidden transition-colors",
           inRadius &&
-            "ring-1 ring-primary/40 shadow-[0_10px_28px_rgba(159,58,76,0.14)]",
+          "ring-1 ring-primary/40 shadow-[0_10px_28px_rgba(159,58,76,0.14)]",
           selected &&
-            "bg-gradient-to-r from-card to-primary/5 ring-1 ring-primary/40",
+          "bg-gradient-to-r from-card to-primary/5 ring-1 ring-primary/40",
         )}
       >
         <CardContent className="flex min-w-0 gap-4 p-4">
@@ -601,7 +691,7 @@ function ProductCard({
         className={cn(
           "w-full overflow-hidden transition-colors",
           selected &&
-            "bg-gradient-to-r from-card to-primary/5 ring-1 ring-primary/40",
+          "bg-gradient-to-r from-card to-primary/5 ring-1 ring-primary/40",
         )}
       >
         <CardContent className="flex min-w-0 gap-4 p-4">

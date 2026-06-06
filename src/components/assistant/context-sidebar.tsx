@@ -16,7 +16,7 @@ import {
   HIDDEN_AGENT_LABELS,
 } from "@/lib/agents/registry";
 import { buildContextPetSubtitle } from "@/lib/assistant-pet-copy";
-import { petPlaceholderImage } from "@/lib/pet-data";
+import { petAvatarSrc } from "@/lib/pet-data";
 
 const STORAGE_KEY = "llp-assistant-context-collapsed";
 
@@ -76,7 +76,7 @@ export function ContextSidebar() {
   const { pet } = usePetCare();
   const [collapsed, setCollapsed] = useState(false);
   const petName = pet?.name ?? "Your pet";
-  const petAvatar = pet ? petPlaceholderImage(pet.species) : undefined;
+  const petAvatar = pet ? petAvatarSrc(pet) : undefined;
   const petSubtitle = pet
     ? buildContextPetSubtitle(pet)
     : "Add details in Pet Profiles";

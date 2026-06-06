@@ -318,6 +318,54 @@
   height: 100%;
 }
 
+.discovery-user-location {
+  background: transparent;
+  border: 0;
+}
+
+.discovery-user-location__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: rgb(59 130 246 / 0.22);
+  animation: discovery-user-pulse 2s ease-out infinite;
+}
+
+.discovery-user-location__dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #ffffff;
+  border-radius: 9999px;
+  background: #2563eb;
+  box-shadow: 0 1px 4px rgb(15 23 42 / 0.28);
+  transform: translate(-50%, -50%);
+}
+
+@keyframes discovery-user-pulse {
+  0% {
+    transform: scale(0.72);
+    opacity: 0.85;
+  }
+  70% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .discovery-user-location__ring {
+    animation: none;
+    opacity: 0.45;
+  }
+}
+
 /* Little Lovely Pets — shared motion (prefers-reduced-motion respected) */
 @keyframes llp-card-in {
   from {
@@ -622,10 +670,105 @@
   box-shadow: none !important;
 }
 
-/* Assistant places map — popup/tooltip styling */
+/* Assistant places map — theme-aware Leaflet chrome + popups */
+.assistant-places-map.leaflet-container {
+  background: var(--muted);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  z-index: 0;
+}
+
+.assistant-places-map .leaflet-pane {
+  z-index: 1 !important;
+}
+
+.assistant-places-map .leaflet-tile-pane {
+  z-index: 1 !important;
+}
+
+.assistant-places-map .leaflet-overlay-pane {
+  z-index: 2 !important;
+}
+
+.assistant-places-map .leaflet-shadow-pane {
+  z-index: 3 !important;
+}
+
+.assistant-places-map .leaflet-marker-pane {
+  z-index: 4 !important;
+}
+
+.assistant-places-map .leaflet-tooltip-pane {
+  z-index: 5 !important;
+}
+
+.assistant-places-map .leaflet-popup-pane {
+  z-index: 6 !important;
+}
+
+.assistant-places-map .leaflet-control-container {
+  z-index: 7 !important;
+}
+
+.assistant-places-map .leaflet-control-zoom {
+  border: 1px solid var(--border);
+  box-shadow: var(--llp-sh-1);
+}
+
+.assistant-places-map .leaflet-control-zoom a,
+.assistant-places-map .leaflet-control-attribution {
+  border-color: var(--border);
+  background: color-mix(in oklab, var(--card) 92%, transparent);
+  color: var(--foreground);
+}
+
+.assistant-places-map .leaflet-control-zoom a:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.assistant-places-map .leaflet-control-attribution a {
+  color: var(--primary);
+}
+
+.assistant-places-map .leaflet-control-attribution a:hover {
+  color: var(--foreground);
+}
+
+.assistant-places-map .leaflet-popup-content-wrapper {
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: var(--llp-sh-2);
+}
+
+.assistant-places-map .leaflet-popup-content {
+  margin: 0.75rem;
+  line-height: 1.4;
+  color: var(--foreground);
+}
+
+.assistant-places-map .leaflet-popup-close-button {
+  color: var(--muted-foreground) !important;
+}
+
+.assistant-places-map .leaflet-popup-close-button:hover {
+  color: var(--foreground) !important;
+}
+
+.assistant-places-map .leaflet-popup-tip {
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+/* Legacy global popup overrides (kept for any non-scoped Leaflet popups) */
 .leaflet-popup-content-wrapper {
   border-radius: 1rem;
   border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
   box-shadow: var(--llp-sh-2);
   padding: 0;
 }
@@ -633,8 +776,10 @@
 .leaflet-popup-content {
   margin: 0.75rem;
   line-height: 1.4;
+  color: var(--foreground);
 }
 
 .leaflet-popup-tip {
-  border-top-color: var(--border);
+  background: var(--card);
+  border: 1px solid var(--border);
 }

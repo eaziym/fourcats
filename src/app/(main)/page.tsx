@@ -23,7 +23,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { getNearbyTop, type PlaceDTO } from "@/lib/discovery-queries";
-import { petPlaceholderImage } from "@/lib/pet-data";
+import { petAvatarSrc } from "@/lib/pet-data";
 import {
   ALERT_ICON,
   ALERT_ICON_TONE,
@@ -87,7 +87,7 @@ function Dashboard({
   pet: PetDTO;
   nearbyVets: PlaceDTO[];
 }) {
-  const avatarSrc = petPlaceholderImage(pet.species);
+  const avatarSrc = petAvatarSrc(pet);
   const ageLabel = pet.ageYears != null ? `${Number(pet.ageYears)} yrs` : "—";
   const weightLabel = pet.weightKg != null ? `${Number(pet.weightKg)} kg` : "—";
   const healthSummary =

@@ -52,6 +52,7 @@ async function DiscoveryContent() {
       pet={{
         name: pet.name,
         species: pet.species,
+        photoUrl: pet.photoUrl,
         medicalConditions: pet.medicalConditions,
       }}
     />

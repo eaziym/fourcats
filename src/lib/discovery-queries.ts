@@ -2,7 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 import { prisma } from "@/lib/db";
-import { resolvePostalToLatLng } from "@/lib/pet-data/search";
+import { resolvePostalToLatLng, postalToLatLng } from "@/lib/pet-data/search";
 import type { PetDTO } from "@/lib/pet-queries";
 
 export type ServiceKind = "groomer" | "vet" | "pet_store" | "cafe";
@@ -38,6 +38,7 @@ export type DiscoveryOrigin = {
   lat: number;
   lng: number;
   label: string;
+  source: "gps" | "saved";
 } | null;
 
 const DISCOVERY_PLACE_LIMIT = 50;
@@ -72,15 +73,32 @@ function bookingUrl(value: string | null): string | null {
 export async function originForPet(pet: PetDTO): Promise<DiscoveryOrigin> {
   const postal = pet.locationPostalCode?.trim();
   if (postal) {
-    const coords = await resolvePostalToLatLng(postal);
+    const coords =
+      (await resolvePostalToLatLng(postal)) ?? postalToLatLng(postal);
     if (coords) {
       return {
         ...coords,
         label: pet.locationLabel?.trim() || `near ${postal}`,
+        source: "saved",
       };
     }
   }
   return null;
+}
+
+/** Discovery listings anchored to an explicit map origin (e.g. browser GPS). */
+export async function getDiscoveryDataAtOrigin(
+  pet: PetDTO,
+  origin: NonNullable<DiscoveryOrigin>,
+): Promise<DiscoveryData> {
+  const [groomers, vets, petStores, cafes, food] = await Promise.all([
+    getPlaces("groomer", origin),
+    getPlaces("vet", origin),
+    getPlaces("pet_store", origin),
+    getPlaces("cafe", origin),
+    getFoodForPet(pet),
+  ]);
+  return { origin, groomers, vets, petStores, cafes, food };
 }
 
 // Top-rated review per place (one query for the whole result set).
@@ -297,14 +315,17 @@ export type DiscoveryData = {
 export const getDiscoveryData = cache(
   async (pet: PetDTO): Promise<DiscoveryData> => {
     const origin = await originForPet(pet);
-    const [groomers, vets, petStores, cafes, food] = await Promise.all([
-      getPlaces("groomer", origin),
-      getPlaces("vet", origin),
-      getPlaces("pet_store", origin),
-      getPlaces("cafe", origin),
-      getFoodForPet(pet),
-    ]);
-    return { origin, groomers, vets, petStores, cafes, food };
+    if (!origin) {
+      const [groomers, vets, petStores, cafes, food] = await Promise.all([
+        getPlaces("groomer", null),
+        getPlaces("vet", null),
+        getPlaces("pet_store", null),
+        getPlaces("cafe", null),
+        getFoodForPet(pet),
+      ]);
+      return { origin: null, groomers, vets, petStores, cafes, food };
+    }
+    return getDiscoveryDataAtOrigin(pet, origin);
   },
 );
 

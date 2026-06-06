@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { petPlaceholderImage } from "@/lib/pet-data";
+import { petAvatarSrc } from "@/lib/pet-data";
 import type { PetDTO } from "@/lib/pet-queries";
 import { cn } from "@/lib/utils";
 
@@ -50,8 +50,7 @@ export function PetSwitcher({
   }, []);
 
   const name = pet?.name ?? "Pet";
-  const avatarSrc =
-    pet?.photoUrl || (pet ? petPlaceholderImage(pet.species) : undefined);
+  const avatarSrc = pet ? petAvatarSrc(pet) : undefined;
   const canSwitch = pets.length > 1;
 
   const sidebarInner = (
@@ -144,7 +143,7 @@ export function PetSwitcher({
               <AvatarImage
                 alt={p.name}
                 className="object-cover"
-                src={p.photoUrl || petPlaceholderImage(p.species)}
+                src={petAvatarSrc(p)}
               />
               <AvatarFallback>
                 {p.name.slice(0, 1).toUpperCase()}

@@ -5,6 +5,7 @@ import {
   discoveryFilters,
   mochiPortrait,
   navItems,
+  petAvatarSrc,
   petPlaceholderImage,
   petPortrait,
 } from "./pet-data";
@@ -17,6 +18,25 @@ describe("petPlaceholderImage", () => {
   it("uses the default portrait for non-cat profiles", () => {
     assert.equal(petPlaceholderImage("dog"), mochiPortrait);
     assert.equal(petPlaceholderImage("rabbit"), mochiPortrait);
+  });
+});
+
+describe("petAvatarSrc", () => {
+  it("prefers the uploaded photo over species stock art", () => {
+    assert.equal(
+      petAvatarSrc({
+        photoUrl: "https://cdn.example/pet.jpg",
+        species: "Cat",
+      }),
+      "https://cdn.example/pet.jpg",
+    );
+  });
+
+  it("falls back to species stock art when no photo is set", () => {
+    assert.equal(
+      petAvatarSrc({ photoUrl: null, species: "Cat" }),
+      petPortrait,
+    );
   });
 });
 

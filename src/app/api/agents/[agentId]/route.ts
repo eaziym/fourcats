@@ -16,9 +16,7 @@ import {
   type GroomingAgentContext,
   type ServicePlaceCard,
 } from "@/lib/agents/grooming-agent";
-import { runGeneralAgent } from "@/lib/agents/handlers";
-import type { MemeAgentContext } from "@/lib/agents/meme-agent";
-import { memeAgent } from "@/lib/agents/meme-agent";
+import { runGeneralAgent, runMemeAgent } from "@/lib/agents/handlers";
 import { buildVetAgent, type VetAgentContext } from "@/lib/agents/vet-agent";
 import { getUser } from "@/lib/auth/server";
 import type { BookingDraft } from "@/lib/booking/types";
@@ -27,35 +25,9 @@ import { enrichPlaceCards } from "@/lib/pet-data/enrich-places";
 import { buildRecommendationContext } from "@/lib/pet-data/format";
 import { postalToLatLng } from "@/lib/pet-data/search";
 import { getPetCareContext } from "@/lib/pet-queries";
-import {
-  buildObjectKey,
-  getSignedDownloadUrl,
-  isStorageConfigured,
-  parseDataUrl,
-  uploadImage,
-} from "@/lib/storage/s3";
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
-
-function parseMemeToolError(
-  newItems: { type: string; output?: unknown }[],
-): string | undefined {
-  for (let i = newItems.length - 1; i >= 0; i--) {
-    const item = newItems[i];
-    if (item.type !== "tool_call_output_item") continue;
-    const raw = typeof item.output === "string" ? item.output : "";
-    try {
-      const parsed = JSON.parse(raw) as { ok?: boolean; error?: string };
-      if (parsed.ok === false && parsed.error) {
-        return parsed.error;
-      }
-    } catch {
-      /* continue */
-    }
-  }
-  return undefined;
-}
 
 export async function POST(
   req: Request,
@@ -128,101 +100,26 @@ export async function POST(
     return NextResponse.json({ error: "Missing image file." }, { status: 400 });
   }
 
-  if (image.size > MAX_IMAGE_BYTES) {
-    return NextResponse.json(
-      { error: `Image too large (max ${MAX_IMAGE_BYTES / (1024 * 1024)} MB).` },
-      { status: 400 },
-    );
-  }
-
-  const mediaType = image.type || "image/png";
-  if (!ALLOWED_IMAGE_TYPES.has(mediaType)) {
-    return NextResponse.json(
-      { error: "Unsupported image type. Use PNG, JPEG, or WebP." },
-      { status: 400 },
-    );
-  }
-
-  const buf = Buffer.from(await image.arrayBuffer());
   const messageField = form.get("message");
   const message =
     typeof messageField === "string" && messageField.trim()
       ? messageField.trim()
       : "Create a funny, shareable meme featuring my pet.";
 
-  const runContext: MemeAgentContext = {
-    petImage: buf,
-    petMediaType: mediaType,
-  };
-
-  let visionPreviewDataUrl: string;
-  try {
-    const preview = await downscaleForVisionPreview(buf);
-    visionPreviewDataUrl = `data:image/jpeg;base64,${preview.toString("base64")}`;
-  } catch {
+  const result = await runMemeAgent({ message, imageBlob: image });
+  if (result.error) {
     return NextResponse.json(
-      {
-        error:
-          "Could not read or resize the image. Try a different PNG, JPEG, or WebP file.",
-      },
-      { status: 400 },
+      { error: result.error },
+      { status: result.status ?? 500 },
     );
   }
 
-  const agentInput = [
-    userMessage([
-      { type: "input_text", text: message },
-      { type: "input_image", image: visionPreviewDataUrl },
-    ]),
-  ];
-
-  try {
-    const result = await run(memeAgent, agentInput, {
-      context: runContext,
-      maxTurns: 12,
-    });
-
-    const assistantText = extractAllTextOutput(result.newItems).trim();
-    const sessionCtx = result.runContext.context as MemeAgentContext;
-    const memeImageDataUrl = sessionCtx.generatedMemeDataUrl;
-    const toolError = parseMemeToolError(
-      result.newItems as { type: string; output?: unknown }[],
-    );
-
-    // Persist the generated meme to private S3 and return a signed URL instead
-    // of the heavy base64 data URL. Falls back to the data URL if storage is
-    // unconfigured or the upload fails, so the demo still works either way.
-    let memeImageUrl: string | undefined;
-    if (memeImageDataUrl && isStorageConfigured()) {
-      try {
-        const parsed = parseDataUrl(memeImageDataUrl);
-        if (parsed) {
-          const key = buildObjectKey(
-            `memes/${sessionUser.id}`,
-            parsed.contentType,
-          );
-          await uploadImage({
-            key,
-            body: parsed.bytes,
-            contentType: parsed.contentType,
-          });
-          memeImageUrl = await getSignedDownloadUrl(key);
-        }
-      } catch {
-        // keep memeImageDataUrl fallback below
-      }
-    }
-
-    return NextResponse.json({
-      assistantText: assistantText || undefined,
-      memeImageUrl,
-      memeImageDataUrl: memeImageUrl ? undefined : memeImageDataUrl,
-      toolError,
-    });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Agent run failed";
-    return NextResponse.json({ error: msg }, { status: 500 });
-  }
+  return NextResponse.json({
+    assistantText: result.assistantText,
+    memeImageUrl: result.memeImageUrl,
+    memeImageDataUrl: result.memeImageDataUrl,
+    toolError: result.toolError,
+  });
 }
 
 async function handleGeneralAgent(req: Request): Promise<Response> {

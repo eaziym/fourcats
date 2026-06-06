@@ -19,7 +19,12 @@ import {
   type ServicePlaceCard,
 } from "@/lib/agents/grooming-agent";
 import type { MemeAgentContext } from "@/lib/agents/meme-agent";
-import { memeAgent } from "@/lib/agents/meme-agent";
+import { createMemeAgent } from "@/lib/agents/meme-agent";
+import {
+  buildMemeBaselineVisionParts,
+  formatMemeBaselineCatalogForAgent,
+  loadMemeBaselineCatalog,
+} from "@/lib/agents/meme-baselines";
 import { extractToolsFromAgentItems } from "@/lib/agents/tool-trace";
 import { buildVetAgent, type VetAgentContext } from "@/lib/agents/vet-agent";
 import { buildGeneralOrchestratorPrompt } from "@/lib/ai/pet-tools";
@@ -407,9 +412,11 @@ export async function runMemeAgent(args: {
   const message =
     args.message.trim() || "Create a funny, shareable meme featuring my pet.";
 
+  const baselineCatalog = await loadMemeBaselineCatalog();
   const runContext: MemeAgentContext = {
     petImage: buf,
     petMediaType: mediaType,
+    baselineCatalog,
   };
 
   let visionPreviewDataUrl: string;
@@ -424,14 +431,26 @@ export async function runMemeAgent(args: {
     };
   }
 
+  const baselineParts = await buildMemeBaselineVisionParts(baselineCatalog);
   const agentInput = [
     userMessage([
-      { type: "input_text", text: message },
+      {
+        type: "input_text",
+        text: [
+          message,
+          "",
+          "Pick one baseline template_id for generate_pet_meme:",
+          formatMemeBaselineCatalogForAgent(baselineCatalog),
+        ].join("\n"),
+      },
+      { type: "input_text", text: "User's pet photo for the meme:" },
       { type: "input_image", image: visionPreviewDataUrl },
+      ...baselineParts,
     ]),
   ];
 
   try {
+    const memeAgent = createMemeAgent(baselineCatalog);
     const result = await run(memeAgent, agentInput, {
       context: runContext,
       maxTurns: 12,
