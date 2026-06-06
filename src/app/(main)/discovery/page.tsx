@@ -9,6 +9,8 @@ import {
   Star,
   Tag,
 } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Pill, SpotlightCard } from "@/components/pet-care/primitives";
 import { PetCareShell } from "@/components/pet-care/shell";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,8 +20,10 @@ import { Input } from "@/components/ui/input";
 import {
   discoveryFilters,
   groomerInterior,
-  mochiPortrait,
+  petPlaceholderImage,
 } from "@/lib/pet-data";
+import type { PetDTO } from "@/lib/pet-queries";
+import { getPetCareContext } from "@/lib/pet-queries";
 import { cn } from "@/lib/utils";
 
 const listings = [
@@ -39,7 +43,10 @@ const listings = [
   },
 ];
 
-function ListPanel() {
+function ListPanel({ pet }: { pet: PetDTO }) {
+  const near =
+    pet.locationLabel?.trim() || pet.locationPostalCode?.trim() || "Singapore";
+
   return (
     <section className="z-10 flex min-h-0 w-full flex-col border-r border-border bg-card shadow-sm md:h-full md:w-[500px] md:shrink-0">
       <div className="border-b border-border p-5 md:p-8">
@@ -53,7 +60,7 @@ function ListPanel() {
           <Search className="absolute top-1/2 left-4 size-6 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="h-12 rounded-xl pl-12 pr-14 text-base"
-            placeholder="Find services near Tampines…"
+            placeholder={`Find services near ${near}…`}
           />
           <button
             className="absolute top-1/2 right-3 -translate-y-1/2 rounded-lg bg-muted p-2 text-muted-foreground transition-colors hover:bg-muted/80"
@@ -62,7 +69,7 @@ function ListPanel() {
             <SlidersHorizontal className="size-5" />
           </button>
         </div>
-        <MochiFilterBar />
+        <MochiFilterBar pet={pet} />
         <FilterChips />
       </div>
 
@@ -70,33 +77,37 @@ function ListPanel() {
         {listings.map((listing) => (
           <ListingCard key={listing.name} {...listing} />
         ))}
-        <SpecialOfferBanner />
+        <SpecialOfferBanner area={near} />
       </div>
     </section>
   );
 }
 
-function MochiFilterBar() {
+function MochiFilterBar({ pet }: { pet: PetDTO }) {
+  const avatarSrc = petPlaceholderImage(pet.species);
+  const hint =
+    pet.medicalConditions.length > 0
+      ? `Prioritising: ${pet.medicalConditions.slice(0, 2).join(", ")}`
+      : "Personalised from your saved profile";
+
   return (
     <div className="mt-4 flex items-center gap-3 rounded-xl border border-primary/25 bg-gradient-to-r from-primary/10 to-card p-2">
       <Avatar className="size-9">
-        <AvatarImage alt="Mochi" src={mochiPortrait} />
-        <AvatarFallback>M</AvatarFallback>
+        <AvatarImage alt={pet.name} src={avatarSrc} />
+        <AvatarFallback>{pet.name.slice(0, 1).toUpperCase()}</AvatarFallback>
       </Avatar>
       <div>
         <p className="text-sm font-semibold text-foreground">
-          Top picks for Mochi
+          Top picks for {pet.name}
         </p>
-        <p className="text-xs text-muted-foreground">
-          Filtered for sensitive skin expertise
-        </p>
+        <p className="text-xs text-muted-foreground">{hint}</p>
       </div>
-      <button
+      <Link
         className="ml-auto px-2 text-sm font-semibold text-primary"
-        type="button"
+        href="/profiles"
       >
-        Edit
-      </button>
+        Edit profile
+      </Link>
     </div>
   );
 }
@@ -175,7 +186,7 @@ function ListingCard({
   );
 }
 
-function SpecialOfferBanner() {
+function SpecialOfferBanner({ area }: { area: string }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-chart-2/30 to-chart-3/25 p-6 text-foreground dark:from-chart-2/20 dark:to-chart-3/15">
       <Pill className="mb-4 rounded-md border-0 bg-foreground text-background">
@@ -183,7 +194,7 @@ function SpecialOfferBanner() {
       </Pill>
       <h3 className="text-2xl font-semibold">First grooming 20% off</h3>
       <p className="mt-2 text-muted-foreground">
-        Available at selected partners near Tampines.
+        Available at selected partners near {area}.
       </p>
       <Button className="mt-5 rounded-full" variant="default">
         Claim offer
@@ -243,11 +254,16 @@ function MapPanel() {
   );
 }
 
-export default function DiscoveryPage() {
+export default async function DiscoveryPage() {
+  const { pet } = await getPetCareContext();
+  if (!pet) {
+    redirect("/onboarding");
+  }
+
   return (
     <PetCareShell active="discovery">
       <main className="flex min-h-0 flex-1 flex-col bg-background md:flex-row">
-        <ListPanel />
+        <ListPanel pet={pet} />
         <MapPanel />
       </main>
     </PetCareShell>

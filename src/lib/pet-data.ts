@@ -1,15 +1,12 @@
 import {
-  Bot,
   Bone,
-  Check,
-  ClipboardCheck,
+  Bot,
   Cross,
   LayoutDashboard,
   Map as MapIcon,
   PawPrint,
   Scissors,
   ShoppingBag,
-  UserRound,
 } from "lucide-react";
 
 export const petPortrait =
@@ -17,6 +14,11 @@ export const petPortrait =
 
 export const mochiPortrait =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuCjyf1cAFJJy7tu7uEbnFYn-aJr0KkIlGrAbTDzJgFkZMV1C8rEnwJY_TLRiaNW-GreL4R-GtItkX6uQgi7k6z_-dwZetX2KWotALR4p9Y4COvbcu8sD4HqCthDyxd8RJs4WNVD_3l1MEt-UmaWcxaZAQXKXEdRsQq52A3OMtMu_EIkwoaRp47MHUag7ssY93pe3t5GmKKSm5xxIQvfEfev1-yVwZRfx_3JJTWpWkCW7nOpX0YIiWUga5x2lhJLMFKsyGPtNC3wWSh0";
+
+/** Stock art when the profile has no photo URL in the database yet. */
+export function petPlaceholderImage(species: string): string {
+  return species.toLowerCase() === "cat" ? petPortrait : mochiPortrait;
+}
 
 export const beaglePortrait =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuCv94TFws-tNGWP412mfGDKxzJ2Z4XByL8qakxZsbZ7ckBtXI3brbpNhp5Qu2BI3ADK4E8nhzFQG4G3AaFFpFxoCUfLmTNNETF2Jr-84LyG9d2O_9JwIM3yMg5lR6n5JAPXmpTNomZGI9a1EF0TdpACAflvKptgWs9JzLI04LY4q39Wb61r3GFrwmrzBQyRakJTmDB21y-yN-JL7tSLC3GIOTgANmiVgT-VVv04qrnxSnFrEs-rTDAoncMHvq1YY9rr3-f0g0loxibP";
@@ -40,33 +42,6 @@ export const navItems = [
 ] as const;
 
 export type Section = (typeof navItems)[number]["id"];
-
-export const careLogItems = [
-  {
-    title: "Morning Feeding",
-    subtitle: "1/2 cup hypoallergenic kibble",
-    time: "08:00 AM",
-    icon: Check,
-    tone: "bg-secondary text-secondary-foreground",
-    done: true,
-  },
-  {
-    title: "Heartworm Medication",
-    subtitle: "Monthly chewable",
-    time: "",
-    icon: ClipboardCheck,
-    tone: "bg-primary/15 text-primary ring-1 ring-primary/20",
-    done: false,
-  },
-  {
-    title: "Evening Walk",
-    subtitle: "East Coast Park",
-    time: "06:30 PM",
-    icon: UserRound,
-    tone: "bg-muted text-muted-foreground ring-1 ring-border",
-    done: false,
-  },
-];
 
 export const discoveryFilters = [
   { label: "Groomers", icon: Scissors, active: true },

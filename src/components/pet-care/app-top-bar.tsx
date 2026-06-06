@@ -3,8 +3,9 @@
 import { Bell, Search, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { usePetCare } from "@/components/pet-care/pet-care-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { mochiPortrait } from "@/lib/pet-data";
+import { petPlaceholderImage } from "@/lib/pet-data";
 import { cn } from "@/lib/utils";
 
 const ROUTE_META: Record<string, { title: string; sub?: string }> = {
@@ -17,7 +18,15 @@ const ROUTE_META: Record<string, { title: string; sub?: string }> = {
   "/profiles": { title: "Pet Profiles", sub: "Your lovely pets" },
 };
 
+function formatSpecies(species: string) {
+  const s = species.toLowerCase();
+  if (s === "dog") return "Dog";
+  if (s === "cat") return "Cat";
+  return species;
+}
+
 export function AppTopBar() {
+  const { pet } = usePetCare();
   const pathname = usePathname() ?? "/";
   const meta = ROUTE_META[pathname] ?? {
     title: "Little Lovely Pets",
@@ -48,15 +57,19 @@ export function AppTopBar() {
       >
         <Avatar className="size-7 border border-border/60">
           <AvatarImage
-            alt="Active pet"
+            alt={pet?.name ? `${pet.name} profile` : "Pet profile"}
             className="object-cover"
-            src={mochiPortrait}
+            src={pet ? petPlaceholderImage(pet.species) : undefined}
           />
-          <AvatarFallback>M</AvatarFallback>
+          <AvatarFallback>
+            {pet?.name?.slice(0, 1).toUpperCase() ?? "P"}
+          </AvatarFallback>
         </Avatar>
-        <span className="text-[13px] font-semibold text-foreground">Mochi</span>
+        <span className="text-[13px] font-semibold text-foreground">
+          {pet?.name ?? "Pet"}
+        </span>
         <span className="hidden text-[12px] text-muted-foreground xl:inline">
-          · Shih Tzu
+          {pet ? ` · ${pet.breed?.trim() || formatSpecies(pet.species)}` : null}
         </span>
       </div>
       <div className="flex flex-1 justify-end gap-2">

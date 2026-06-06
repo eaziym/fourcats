@@ -8,10 +8,44 @@ import { ChatBubble, LoadingBubble } from "@/components/assistant/chat-bubble";
 import { ChatInput, MemeChatInput } from "@/components/assistant/chat-input";
 import { ContextSidebar } from "@/components/assistant/context-sidebar";
 import { PetCareShell } from "@/components/pet-care/shell";
-import type { AssistantAgentId } from "@/lib/agents/registry";
+import { usePetCare } from "@/components/pet-care/pet-care-provider";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { ASSISTANT_AGENTS, type AssistantAgentId } from "@/lib/agents/registry";
+import { petPlaceholderImage } from "@/lib/pet-data";
+import type { PetDTO } from "@/lib/pet-queries";
+import { MapIcon, ShoppingBag } from "lucide-react";
 
-const WELCOME_TEXT =
-  "Hi there! How is Mochi doing today? I'm ready to help with any grooming, health, or lifestyle questions you have for your Shih Tzu.";
+function buildAssistantWelcome(pet: PetDTO | null): string {
+  if (!pet) {
+    return "Hi there! I'm ready to help with grooming, health, or lifestyle questions for your pet in Singapore.";
+  }
+  const kind =
+    pet.breed?.trim() ||
+    (pet.species.toLowerCase() === "dog"
+      ? "dog"
+      : pet.species.toLowerCase() === "cat"
+        ? "cat"
+        : pet.species);
+  return `Hi there! How is ${pet.name} doing today? I'm ready to help with any grooming, health, or lifestyle questions you have for your ${kind}.`;
+}
+
+function buildContextPetSubtitle(pet: PetDTO): string {
+  const breed = pet.breed?.trim();
+  const species =
+    pet.species.toLowerCase() === "dog"
+      ? "Dog"
+      : pet.species.toLowerCase() === "cat"
+        ? "Cat"
+        : pet.species;
+  const age =
+    pet.ageYears != null ? `${Number(pet.ageYears)} yrs` : "Age not set";
+  const med =
+    pet.medicalConditions.length > 0
+      ? pet.medicalConditions.slice(0, 2).join(", ")
+      : "No conditions on file";
+  return `${breed || species} • ${age} • ${med}`;
+}
 
 const MEME_WELCOME =
   "I'm the Meme agent. Upload a photo of your pet, add an optional caption or vibe, and I'll generate a meme image using OpenAI image editing.";
@@ -24,6 +58,7 @@ type MemeMessage = {
 };
 
 export default function AssistantPage() {
+  const { pet } = usePetCare();
   const [agentId, setAgentId] = useState<AssistantAgentId>("general");
   const [input, setInput] = useState("");
   const [memeMessages, setMemeMessages] = useState<MemeMessage[]>([]);
@@ -38,19 +73,26 @@ export default function AssistantPage() {
     [],
   );
 
-  const { messages, sendMessage, status, error } = useChat({
-    transport,
-    messages: [
+  const welcomeText = useMemo(() => buildAssistantWelcome(pet), [pet]);
+  const initialMessages = useMemo(
+    () => [
       {
         id: "welcome",
-        role: "assistant",
-        content: WELCOME_TEXT,
-        parts: [{ type: "text" as const, text: WELCOME_TEXT }],
+        role: "assistant" as const,
+        content: welcomeText,
+        parts: [{ type: "text" as const, text: welcomeText }],
       },
     ],
+    [welcomeText],
+  );
+
+  const { messages, sendMessage, status, error } = useChat({
+    transport,
+    messages: initialMessages,
   });
 
   const busy = status === "streaming" || status === "submitted";
+  const chatPlaceholderPet = pet?.name ?? "your pet";
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const lastScrollKey =
@@ -177,6 +219,7 @@ export default function AssistantPage() {
             <ChatInput
               input={input}
               busy={busy}
+              petName={chatPlaceholderPet}
               onInputChange={setInput}
               onSubmit={handleSubmit}
             />
@@ -203,11 +246,22 @@ function GeneralChat({
   messages,
   busy,
   error,
+  petName,
+  onInputChange,
+  onSubmit,
 }: {
   messages: { id: string; role: string; content: string; parts?: { type: string; text: string }[] }[];
   busy: boolean;
   error: Error | undefined;
+  petName: string;
+  onInputChange: (value: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
 }) {
+  const placeholder =
+    petName === "your pet"
+      ? "Ask about your pet's health, diet, or local services..."
+      : `Ask about ${petName}'s health, diet, or local services...`;
+
   return (
     <div className="flex flex-col gap-6">
       {messages.map((msg) => (

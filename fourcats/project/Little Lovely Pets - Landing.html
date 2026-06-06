@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Little Lovely Pets — AI pet care for Singapore</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet" />
+<style>
+/* ============ STANDARDISED DESIGN TOKENS — "Modern Warmth" ============ */
+:root{
+  --primary:#9c3f53; --primary-bright:#ff8da1; --primary-container:#ffe1e6; --on-primary-container:#782338;
+  --secondary:#7a5b00; --secondary-container:#ffe49b; --on-secondary-container:#5b4300;
+  --tertiary:#3a4f73; --tertiary-container:#dbe6ff; --on-tertiary-container:#26395c;
+  --success:#1f8a5b; --success-container:#cdeedd; --error:#ba1a1a; --error-container:#ffdad6;
+  --bg:#f7f6f7; --surface:#ffffff; --surface-2:#f3f1f2; --surface-3:#ece9ea;
+  --ink:#191417; --ink-2:#5b4f53; --ink-3:#8d8186; --outline:#e4dcdf; --outline-2:#d9ced2;
+  --r-mult:1; --r-xs:calc(6px*var(--r-mult)); --r-sm:calc(10px*var(--r-mult)); --r-md:calc(16px*var(--r-mult));
+  --r-lg:calc(22px*var(--r-mult)); --r-xl:calc(30px*var(--r-mult)); --r-pill:999px;
+  --u:8px; --pad-card:24px; --gap:20px;
+  --cute:0.8; --blush:calc(var(--cute)*1); --bounce:calc(var(--cute)*1);
+  --sh-1:0 4px 20px rgba(40,28,33,.05); --sh-2:0 10px 34px rgba(40,28,33,.10); --sh-pop:0 16px 44px rgba(120,35,56,.18);
+  --font-d:'Quicksand',system-ui,sans-serif; --font-b:'Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;}
+body{font-family:var(--font-b);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+.font-d{font-family:var(--font-d);}
+.material-symbols-rounded{font-variation-settings:'opsz' 24,'wght' 400,'FILL' 0,'GRAD' 0;line-height:1;user-select:none;}
+.fill .material-symbols-rounded,.material-symbols-rounded.fill{font-variation-settings:'FILL' 1;}
+::-webkit-scrollbar{width:11px;height:11px;}
+::-webkit-scrollbar-thumb{background:var(--outline-2);border-radius:999px;border:3px solid transparent;background-clip:content-box;}
+::-webkit-scrollbar-thumb:hover{background:var(--ink-3);background-clip:content-box;}
+@keyframes cardIn{from{opacity:0;transform:translateY(10px) scale(.985);}to{opacity:1;transform:none;}}
+@keyframes popIn{from{opacity:0;transform:scale(.9);}to{opacity:1;transform:scale(1);}}
+@keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-7px);}}
+@keyframes wag{0%,100%{transform:rotate(-7deg);}50%{transform:rotate(7deg);}}
+@keyframes blink{0%,92%,100%{transform:scaleY(1);}96%{transform:scaleY(.1);}}
+@keyframes marquee{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+/* scroll reveal */
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1);}
+.reveal.in{opacity:1;transform:none;}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none;}*{animation-duration:.001ms!important;}}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+a{color:inherit;text-decoration:none;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="llp-ds.jsx"></script>
+<script type="text/babel" src="llp-landing.jsx"></script>
+</body>
+</html>
