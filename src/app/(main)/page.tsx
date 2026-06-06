@@ -121,7 +121,7 @@ function Dashboard({
             weightLabel={weightLabel}
           />
           <div className="grid gap-6">
-            <AiCareAlert petName={pet.name} />
+            <AiCareAlert alert={buildCareAlert(pet)} />
             <DailyCareLog logs={pet.careLogs} pet={pet} />
           </div>
           <KibbleReminder
@@ -212,24 +212,102 @@ function PetCard({
   );
 }
 
-function AiCareAlert({ petName }: { petName: string }) {
+type CareAlertLevel = "attention" | "watch" | "info" | "good";
+type CareAlert = {
+  level: CareAlertLevel;
+  label: string;
+  message: string;
+  cta?: { href: string; text: string };
+};
+
+const OFF_MOODS = new Set(["off", "anxious", "tired", "sad", "lethargic"]);
+
+// Derive a profile-aware alert from the pet's recent care logs + conditions.
+function buildCareAlert(pet: PetDTO): CareAlert {
+  const recent = pet.careLogs.slice(0, 6);
+  const symptoms = [...new Set(recent.flatMap((l) => l.symptoms))].filter(
+    Boolean,
+  );
+  if (symptoms.length > 0) {
+    return {
+      level: "attention",
+      label: "Vet check suggested",
+      message: `${pet.name} recently logged ${symptoms.slice(0, 3).join(", ")}. If it keeps up, a quick vet visit is worth booking.`,
+      cta: { href: "/discovery", text: "Find a vet nearby" },
+    };
+  }
+  const offMoods = recent.filter(
+    (l) => l.mood && OFF_MOODS.has(l.mood.toLowerCase()),
+  );
+  if (offMoods.length >= 2) {
+    return {
+      level: "watch",
+      label: "Mood watch",
+      message: `${pet.name} has seemed ${offMoods[0].mood?.toLowerCase()} across recent check-ins. Keep an eye on appetite and energy.`,
+    };
+  }
+  if (pet.medicalConditions.length > 0) {
+    return {
+      level: "info",
+      label: "Care reminder",
+      message: `${pet.name} has ${pet.medicalConditions.slice(0, 2).join(" & ")} on file — keep meds and diet consistent, and watch for flare-ups in SG's humidity.`,
+      cta: { href: "/assistant", text: "Ask the assistant" },
+    };
+  }
+  const latestFed = recent.find((l) => l.fed != null);
+  if (latestFed?.fed === false) {
+    return {
+      level: "watch",
+      label: "Reminder",
+      message: `${pet.name} isn't marked as fed in the latest check-in — don't forget today's meal.`,
+    };
+  }
+  return {
+    level: "good",
+    label: "All good",
+    message:
+      recent.length > 0
+        ? `No concerns in ${pet.name}'s recent check-ins. Keep up the daily logs and regular vet visits.`
+        : `Start logging ${pet.name}'s meals, mood, and weight to get personalised care alerts here.`,
+  };
+}
+
+const ALERT_ICON: Record<CareAlertLevel, typeof Sun> = {
+  attention: Cross,
+  watch: Sun,
+  info: Sparkles,
+  good: Sun,
+};
+const ALERT_ICON_TONE: Record<CareAlertLevel, string> = {
+  attention: "text-rose-500",
+  watch: "text-amber-500",
+  info: "text-primary",
+  good: "text-amber-500",
+};
+
+function AiCareAlert({ alert }: { alert: CareAlert }) {
+  const Icon = ALERT_ICON[alert.level];
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-primary/20 via-accent/30 to-primary/10 p-8 shadow-sm dark:from-primary/25 dark:via-primary/10 dark:to-card">
       <div className="flex gap-6">
         <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-background/60 dark:bg-background/40">
-          <Sun className="size-7 text-amber-500" />
+          <Icon className={cn("size-7", ALERT_ICON_TONE[alert.level])} />
         </div>
         <div>
           <div className="mb-3 flex flex-wrap items-center gap-3">
             <h3 className="font-semibold">AI care alert</h3>
             <Pill className="border-0 bg-background/70 text-primary dark:bg-background/50">
-              High priority
+              {alert.label}
             </Pill>
           </div>
           <p className="max-w-3xl text-base leading-relaxed text-muted-foreground md:text-lg">
-            Hot day in SG — highs near 32°C. Keep {petName} hydrated on walks
-            and avoid hot pavement between 12pm and 4pm.
+            {alert.message}
           </p>
+          {alert.cta ? (
+            <Button className="mt-3 px-0" variant="link" asChild>
+              <a href={alert.cta.href}>{alert.cta.text} →</a>
+            </Button>
+          ) : null}
         </div>
       </div>
       <Bot className="pointer-events-none absolute -right-4 top-2 size-28 text-primary/10" />

@@ -2,7 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 import { prisma } from "@/lib/db";
-import { postalToLatLng } from "@/lib/pet-data/search";
+import { resolvePostalToLatLng } from "@/lib/pet-data/search";
 import type { PetDTO } from "@/lib/pet-queries";
 
 export type ServiceKind = "groomer" | "vet";
@@ -40,16 +40,39 @@ export type DiscoveryOrigin = {
   label: string;
 } | null;
 
+const DISCOVERY_PLACE_LIMIT = 50;
+const DISCOVERY_DISTANCE_RADIUS_KM = 50;
+
 function num(value: unknown): number | null {
   if (value == null) return null;
   const n = typeof value === "number" ? value : Number(value.toString());
   return Number.isFinite(n) ? n : null;
 }
 
-function originForPet(pet: PetDTO): DiscoveryOrigin {
+function bookingUrl(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (
+      /\.(css|js|mjs|map|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|eot|pdf|zip)$/i.test(
+        url.pathname,
+      )
+    ) {
+      return null;
+    }
+    if (url.pathname.toLowerCase().includes("/wp-content/plugins/")) {
+      return null;
+    }
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+async function originForPet(pet: PetDTO): Promise<DiscoveryOrigin> {
   const postal = pet.locationPostalCode?.trim();
   if (postal) {
-    const coords = postalToLatLng(postal);
+    const coords = await resolvePostalToLatLng(postal);
     if (coords) {
       return {
         ...coords,
@@ -128,7 +151,7 @@ function toPlaceDTO(
     phone: row.nationalPhoneNumber,
     websiteUrl: row.websiteUrl,
     googleMapsUrl: row.googleMapsUrl,
-    bookingUrl: row.bookingUrl,
+    bookingUrl: bookingUrl(row.bookingUrl),
     email: row.primaryEmail,
     topReview: review,
   };
@@ -159,8 +182,8 @@ const PLACE_SELECT = {
 export async function getPlaces(
   kind: ServiceKind,
   origin: DiscoveryOrigin,
-  limit = 50,
-  radiusKm = 20,
+  limit = DISCOVERY_PLACE_LIMIT,
+  radiusKm = DISCOVERY_DISTANCE_RADIUS_KM,
 ): Promise<PlaceDTO[]> {
   if (origin) {
     const near = await prisma.$queryRaw<{ id: string; distance_km: number }[]>`
@@ -201,6 +224,7 @@ export async function getPlaces(
 
 export type ProductDTO = {
   id: string;
+  source: string;
   title: string;
   brand: string | null;
   petType: string | null;
@@ -231,6 +255,7 @@ export async function getFoodForPet(
     take: limit,
     select: {
       id: true,
+      source: true,
       title: true,
       brand: true,
       petType: true,
@@ -245,6 +270,7 @@ export async function getFoodForPet(
   });
   return rows.map((r) => ({
     id: r.id,
+    source: r.source,
     title: r.title,
     brand: r.brand,
     petType: r.petType,
@@ -268,7 +294,7 @@ export type DiscoveryData = {
 /** Groomers, vets, and food near/for the pet — the discovery screen. */
 export const getDiscoveryData = cache(
   async (pet: PetDTO): Promise<DiscoveryData> => {
-    const origin = originForPet(pet);
+    const origin = await originForPet(pet);
     const [groomers, vets, food] = await Promise.all([
       getPlaces("groomer", origin),
       getPlaces("vet", origin),
@@ -284,7 +310,7 @@ export async function getNearbyTop(
   kind: ServiceKind,
   limit = 3,
 ): Promise<{ origin: DiscoveryOrigin; places: PlaceDTO[] }> {
-  const origin = originForPet(pet);
+  const origin = await originForPet(pet);
   const places = await getPlaces(kind, origin, limit);
   return { origin, places };
 }

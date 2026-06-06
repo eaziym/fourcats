@@ -1,11 +1,13 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import type { LatLngExpression } from "leaflet";
+import { type DivIcon, divIcon, type LatLngExpression } from "leaflet";
+import { useTheme } from "next-themes";
 import { useEffect } from "react";
 import {
-  CircleMarker,
+  Circle,
   MapContainer,
+  Marker,
   TileLayer,
   Tooltip,
   useMap,
@@ -13,6 +15,74 @@ import {
 import type { DiscoveryOrigin, PlaceDTO } from "@/lib/discovery-queries";
 
 const SG_CENTER: LatLngExpression = [1.3521, 103.8198];
+const TILE_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+const TILE_URLS = {
+  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+};
+
+function mapColors(isDark: boolean) {
+  return {
+    originFill: isDark ? "#f8fafc" : "#334155",
+    originPaw: isDark ? "#334155" : "#ffffff",
+    pawShell: isDark ? "#1e293b" : "#ffffff",
+    placeFill: isDark ? "#cbd5e1" : "#64748b",
+    radiusFill: isDark ? "#fb7185" : "#9f3a4c",
+    radiusStroke: isDark ? "#fb7185" : "#9f3a4c",
+    selectedFill: isDark ? "#fb7185" : "#9f3a4c",
+    shellStroke: isDark ? "#020617" : "#ffffff",
+  };
+}
+
+type MarkerColors = ReturnType<typeof mapColors>;
+
+function pawSvg(fill: string) {
+  return `
+    <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+      <circle cx="9.2" cy="10.6" r="3.5" fill="${fill}" />
+      <circle cx="16" cy="7.8" r="3.7" fill="${fill}" />
+      <circle cx="22.8" cy="10.6" r="3.5" fill="${fill}" />
+      <circle cx="26" cy="17" r="3.1" fill="${fill}" />
+      <path d="M7.8 22.4c0-4.9 3.7-8.4 8.2-8.4s8.2 3.5 8.2 8.4c0 3.1-2.2 4.9-5.1 4.1a11.1 11.1 0 0 0-6.2 0c-2.9.8-5.1-1-5.1-4.1Z" fill="${fill}" />
+    </svg>
+  `;
+}
+
+function pawMarkerIcon({
+  colors,
+  inRadius = false,
+  isOrigin = false,
+  isSelected = false,
+}: {
+  colors: MarkerColors;
+  inRadius?: boolean;
+  isOrigin?: boolean;
+  isSelected?: boolean;
+}): DivIcon {
+  const size = isSelected ? 40 : isOrigin ? 36 : 32;
+  const height = isSelected ? 46 : isOrigin ? 42 : 38;
+  const fill = isSelected
+    ? colors.selectedFill
+    : isOrigin
+      ? colors.originFill
+      : colors.placeFill;
+  const pawFill = isOrigin ? colors.originPaw : colors.pawShell;
+  return divIcon({
+    className: "discovery-paw-marker",
+    html: `
+      <span
+        class="discovery-paw-pin${isSelected ? " is-selected" : ""}${isOrigin ? " is-origin" : ""}${inRadius ? " is-in-radius" : ""}"
+        style="--paw-pin-fill: ${fill}; --paw-pin-shell: ${colors.pawShell}; --paw-pin-stroke: ${colors.shellStroke};"
+      >
+        <span class="discovery-paw-pin__icon">${pawSvg(pawFill)}</span>
+      </span>
+    `,
+    iconAnchor: [size / 2, height - 3],
+    iconSize: [size, height],
+    tooltipAnchor: [0, -height + 8],
+  });
+}
 
 type Located = PlaceDTO & { lat: number; lng: number };
 
@@ -28,10 +98,10 @@ function FitBounds({ points }: { points: [number, number][] }) {
   useEffect(() => {
     if (points.length === 0) return;
     if (points.length === 1) {
-      map.setView(points[0], 15);
+      map.setView(points[0], 13);
       return;
     }
-    map.fitBounds(points, { padding: [48, 48], maxZoom: 15 });
+    map.fitBounds(points, { padding: [64, 64], maxZoom: 13 });
   }, [map, sig]);
   return null;
 }
@@ -48,14 +118,20 @@ function PanToSelected({ target }: { target: [number, number] | null }) {
 export default function DiscoveryMap({
   places,
   origin,
+  radiusKm,
   selectedId,
   onSelect,
 }: {
   places: PlaceDTO[];
   origin: DiscoveryOrigin;
+  radiusKm: number;
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const colors = mapColors(isDark);
+  const tileUrl = isDark ? TILE_URLS.dark : TILE_URLS.light;
   const pts = located(places);
   const center: LatLngExpression = origin
     ? [origin.lat, origin.lng]
@@ -63,64 +139,71 @@ export default function DiscoveryMap({
       ? [pts[0].lat, pts[0].lng]
       : SG_CENTER;
   const selected = pts.find((p) => p.id === selectedId) ?? null;
+  const fitPoints: [number, number][] = origin
+    ? [
+        [origin.lat, origin.lng],
+        ...pts.map((p) => [p.lat, p.lng] as [number, number]),
+      ]
+    : pts.map((p) => [p.lat, p.lng] as [number, number]);
 
   return (
     <MapContainer
       center={center}
-      zoom={13}
+      zoom={12}
       scrollWheelZoom
-      className="size-full"
+      className="discovery-map size-full"
       style={{ background: "var(--muted)" }}
     >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution={TILE_ATTRIBUTION}
+        detectRetina
+        key={tileUrl}
+        maxZoom={19}
+        url={tileUrl}
       />
 
       {origin ? (
-        <CircleMarker
+        <Circle
           center={[origin.lat, origin.lng]}
-          radius={9}
           pathOptions={{
-            color: "#ffffff",
-            weight: 3,
-            fillColor: "#1d3557",
-            fillOpacity: 1,
+            color: colors.radiusStroke,
+            fillColor: colors.radiusFill,
+            fillOpacity: 0.08,
+            opacity: 0.32,
+            weight: 1.5,
           }}
+          radius={radiusKm * 1000}
+        />
+      ) : null}
+
+      {origin ? (
+        <Marker
+          icon={pawMarkerIcon({ colors, isOrigin: true })}
+          position={[origin.lat, origin.lng]}
         >
           <Tooltip>{origin.label}</Tooltip>
-        </CircleMarker>
+        </Marker>
       ) : null}
 
       {pts.map((p) => {
         const isSelected = p.id === selectedId;
-        const fill = isSelected
-          ? "#e76f51"
-          : p.kind === "vet"
-            ? "#2a9d8f"
-            : "#e9a23b";
+        const inRadius = p.distanceKm != null && p.distanceKm <= radiusKm;
         return (
-          <CircleMarker
-            key={p.id}
-            center={[p.lat, p.lng]}
-            radius={isSelected ? 11 : 8}
-            pathOptions={{
-              color: "#ffffff",
-              weight: 2,
-              fillColor: fill,
-              fillOpacity: 0.9,
-            }}
+          <Marker
             eventHandlers={{ click: () => onSelect(p.id) }}
+            icon={pawMarkerIcon({ colors, inRadius, isSelected })}
+            key={p.id}
+            position={[p.lat, p.lng]}
           >
             <Tooltip direction="top" offset={[0, -6]}>
               {p.name}
               {p.rating != null ? ` · ★${p.rating.toFixed(1)}` : ""}
             </Tooltip>
-          </CircleMarker>
+          </Marker>
         );
       })}
 
-      <FitBounds points={pts.map((p) => [p.lat, p.lng])} />
+      <FitBounds points={fitPoints} />
       <PanToSelected target={selected ? [selected.lat, selected.lng] : null} />
     </MapContainer>
   );

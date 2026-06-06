@@ -2,12 +2,15 @@
 
 import {
   Calendar,
+  ChevronLeft,
+  ChevronRight,
   Cross,
   ExternalLink,
   Globe,
   MapPin,
   Phone,
   Quote,
+  Radar,
   Scissors,
   Search,
   ShoppingBag,
@@ -23,6 +26,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import type {
   DiscoveryData,
   PlaceDTO,
@@ -53,6 +57,17 @@ const TABS: { id: Tab; label: string; icon: typeof Scissors }[] = [
   { id: "food", label: "Food", icon: ShoppingBag },
 ];
 
+const PAGE_SIZE: Record<Tab, number> = {
+  groomer: 30,
+  vet: 30,
+  food: 30,
+};
+
+const DEFAULT_RADIUS_KM = 8;
+const MIN_RADIUS_KM = 2;
+const MAX_RADIUS_KM = 20;
+const RADIUS_STEP_KM = 1;
+
 function money(cents: number | null): string | null {
   return cents == null ? null : `S$${(cents / 100).toFixed(2)}`;
 }
@@ -76,6 +91,23 @@ function ratingLabel(p: PlaceDTO): string | null {
   return `${p.rating.toFixed(1)}${count}`;
 }
 
+function isWithinRadius(place: PlaceDTO, radiusKm: number): boolean {
+  return place.distanceKm != null && place.distanceKm <= radiusKm;
+}
+
+function sortByDistance(a: PlaceDTO, b: PlaceDTO): number {
+  if (a.distanceKm != null && b.distanceKm != null) {
+    return a.distanceKm - b.distanceKm;
+  }
+  if (a.distanceKm != null) return -1;
+  if (b.distanceKm != null) return 1;
+  return (b.rating ?? 0) - (a.rating ?? 0);
+}
+
+function supplierLabel(product: ProductDTO): string {
+  return product.source === "kohepets" ? "Kohepets" : product.source;
+}
+
 const PANEL_H = "md:h-[calc(100dvh-66px)]";
 
 export function DiscoveryView({
@@ -87,6 +119,8 @@ export function DiscoveryView({
 }) {
   const [tab, setTab] = useState<Tab>("groomer");
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [radiusKm, setRadiusKm] = useState(DEFAULT_RADIUS_KM);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const isFood = tab === "food";
@@ -95,13 +129,15 @@ export function DiscoveryView({
 
   const filteredPlaces = useMemo(() => {
     if (isFood) return [];
-    if (!q) return places;
-    return places.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.neighbourhood?.toLowerCase().includes(q) ||
-        p.serviceTags.some((t) => t.toLowerCase().includes(q)),
-    );
+    const matched = q
+      ? places.filter(
+          (p) =>
+            p.name.toLowerCase().includes(q) ||
+            p.neighbourhood?.toLowerCase().includes(q) ||
+            p.serviceTags.some((t) => t.toLowerCase().includes(q)),
+        )
+      : places;
+    return [...matched].sort(sortByDistance);
   }, [isFood, places, q]);
 
   const filteredFood = useMemo(() => {
@@ -115,22 +151,47 @@ export function DiscoveryView({
     );
   }, [isFood, data.food, q]);
 
+  const pageSize = PAGE_SIZE[tab];
+  const totalResults = isFood ? filteredFood.length : filteredPlaces.length;
+  const totalPages = Math.max(1, Math.ceil(totalResults / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = totalResults === 0 ? 0 : (currentPage - 1) * pageSize;
+  const pageEnd = Math.min(totalResults, pageStart + pageSize);
+  const visiblePlaces = useMemo(
+    () => filteredPlaces.slice(pageStart, pageEnd),
+    [filteredPlaces, pageStart, pageEnd],
+  );
+  const visibleFood = useMemo(
+    () => filteredFood.slice(pageStart, pageEnd),
+    [filteredFood, pageStart, pageEnd],
+  );
+
   const selectedPlace = isFood
     ? null
-    : (filteredPlaces.find((p) => p.id === selectedId) ?? null);
+    : (visiblePlaces.find((p) => p.id === selectedId) ?? null);
   const selectedProduct = isFood
-    ? (filteredFood.find((p) => p.id === selectedId) ?? null)
+    ? (visibleFood.find((p) => p.id === selectedId) ?? null)
     : null;
 
   const near = data.origin?.label ?? "Singapore";
   const activeLabel = TABS.find((t) => t.id === tab)?.label.toLowerCase() ?? "";
+  const resultLabel = isFood ? "food" : activeLabel;
+  const inRadiusCount =
+    !isFood && data.origin
+      ? filteredPlaces.filter((p) => isWithinRadius(p, radiusKm)).length
+      : 0;
+
+  function changePage(nextPage: number) {
+    setPage(Math.min(Math.max(nextPage, 1), totalPages));
+    setSelectedId(null);
+  }
 
   return (
-    <main className="flex min-h-0 flex-col bg-background md:flex-row">
+    <main className="flex min-h-0 flex-col overflow-hidden bg-background md:flex-row">
       {/* List panel */}
       <section
         className={cn(
-          "z-10 flex min-h-0 w-full flex-col border-r border-border bg-card shadow-sm md:w-[460px] md:shrink-0",
+          "z-10 flex min-h-0 w-full flex-col overflow-hidden border-r border-border bg-card shadow-sm md:w-[480px] md:shrink-0",
           PANEL_H,
         )}
       >
@@ -149,7 +210,11 @@ export function DiscoveryView({
               className="h-11 rounded-xl pl-11 pr-4"
               placeholder={`Search ${activeLabel}…`}
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setPage(1);
+                setSelectedId(null);
+              }}
             />
           </div>
 
@@ -204,6 +269,7 @@ export function DiscoveryView({
                     setTab(t.id);
                     setSelectedId(null);
                     setQuery("");
+                    setPage(1);
                   }}
                   type="button"
                 >
@@ -221,14 +287,26 @@ export function DiscoveryView({
               );
             })}
           </div>
+
+          {!isFood && data.origin ? (
+            <RadiusControl
+              count={inRadiusCount}
+              label={activeLabel}
+              radiusKm={radiusKm}
+              onRadiusChange={(value) => {
+                setRadiusKm(value);
+                setSelectedId(null);
+              }}
+            />
+          ) : null}
         </div>
 
-        <div className="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto p-5 md:p-7">
+        <div className="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto overflow-x-hidden p-5 md:p-7">
           {isFood ? (
             filteredFood.length === 0 ? (
               <EmptyState label="food" />
             ) : (
-              filteredFood.map((product) => (
+              visibleFood.map((product) => (
                 <ProductCard
                   key={product.id}
                   product={product}
@@ -240,9 +318,10 @@ export function DiscoveryView({
           ) : filteredPlaces.length === 0 ? (
             <EmptyState label={activeLabel} />
           ) : (
-            filteredPlaces.map((place) => (
+            visiblePlaces.map((place) => (
               <ListingCard
                 key={place.id}
+                inRadius={isWithinRadius(place, radiusKm)}
                 place={place}
                 selected={selectedId === place.id}
                 onSelect={() => setSelectedId(place.id)}
@@ -250,19 +329,29 @@ export function DiscoveryView({
             ))
           )}
         </div>
+        <ResultsPager
+          currentPage={currentPage}
+          label={resultLabel}
+          onPageChange={changePage}
+          pageEnd={pageEnd}
+          pageStart={pageStart}
+          totalPages={totalPages}
+          totalResults={totalResults}
+        />
       </section>
 
       {/* Map panel */}
-      <section className={cn("relative h-[55vh] flex-1", PANEL_H)}>
+      <section className={cn("relative h-[55vh] min-w-0 flex-1", PANEL_H)}>
         <DiscoveryMap
-          places={filteredPlaces}
+          places={visiblePlaces}
           origin={data.origin}
+          radiusKm={radiusKm}
           selectedId={selectedId}
           onSelect={setSelectedId}
         />
         {isFood ? (
           <div className="pointer-events-none absolute left-1/2 top-4 z-[1000] -translate-x-1/2 rounded-full bg-card/90 px-4 py-1.5 text-xs font-medium text-muted-foreground shadow backdrop-blur">
-            Showing food products — map shows your area
+            Kohepets is online-only; map shows your area
           </div>
         ) : null}
         {selectedPlace ? (
@@ -291,10 +380,12 @@ function EmptyState({ label }: { label: string }) {
 }
 
 function ListingCard({
+  inRadius,
   place,
   selected,
   onSelect,
 }: {
+  inRadius: boolean;
   place: PlaceDTO;
   selected: boolean;
   onSelect: () => void;
@@ -302,23 +393,29 @@ function ListingCard({
   const Icon = place.kind === "vet" ? Cross : Scissors;
   const rating = ratingLabel(place);
   return (
-    <button type="button" onClick={onSelect} className="text-left">
+    <button
+      type="button"
+      onClick={onSelect}
+      className="block w-full min-w-0 text-left"
+    >
       <SpotlightCard
         className={cn(
-          "transition-colors",
+          "w-full overflow-hidden transition-colors",
+          inRadius &&
+            "ring-1 ring-primary/40 shadow-[0_10px_28px_rgba(159,58,76,0.14)]",
           selected &&
             "bg-gradient-to-r from-card to-primary/5 ring-1 ring-primary/40",
         )}
       >
-        <CardContent className="flex gap-4 p-4">
+        <CardContent className="flex min-w-0 gap-4 p-4">
           <div className="relative flex size-16 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/15 to-accent/30 text-primary">
             <Icon className="size-7" />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="truncate font-semibold tracking-tight">
+            <h3 className="line-clamp-2 font-semibold leading-snug tracking-tight">
               {place.name}
             </h3>
-            <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+            <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm text-muted-foreground">
               {rating ? (
                 <span className="flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400">
                   <Star className="size-3.5 fill-current" />
@@ -326,18 +423,25 @@ function ListingCard({
                 </span>
               ) : null}
               <MapPin className="size-3.5 shrink-0" />
-              {distanceLabel(place)}
+              <span className="truncate">{distanceLabel(place)}</span>
             </p>
             {place.topReview ? (
               <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                 “{place.topReview.text}”
               </p>
             ) : null}
-            {place.bookingUrl || place.phone ? (
-              <Pill className="mt-2 rounded-md bg-secondary text-secondary-foreground">
-                Bookable
-              </Pill>
-            ) : null}
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {place.bookingUrl || place.phone ? (
+                <Pill className="rounded-md bg-secondary text-secondary-foreground">
+                  Bookable
+                </Pill>
+              ) : null}
+              {inRadius ? (
+                <Pill className="rounded-md bg-primary/10 text-primary">
+                  In radius
+                </Pill>
+              ) : null}
+            </div>
           </div>
         </CardContent>
       </SpotlightCard>
@@ -355,24 +459,30 @@ function ProductCard({
   onSelect: () => void;
 }) {
   return (
-    <button type="button" onClick={onSelect} className="text-left">
+    <button
+      type="button"
+      onClick={onSelect}
+      className="block w-full min-w-0 text-left"
+    >
       <SpotlightCard
         className={cn(
-          "transition-colors",
+          "w-full overflow-hidden transition-colors",
           selected &&
             "bg-gradient-to-r from-card to-primary/5 ring-1 ring-primary/40",
         )}
       >
-        <CardContent className="flex gap-4 p-4">
+        <CardContent className="flex min-w-0 gap-4 p-4">
           <div className="relative flex size-16 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-secondary/40 to-accent/30 text-primary">
             <Utensils className="size-7" />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="truncate font-semibold tracking-tight">
+            <h3 className="line-clamp-2 font-semibold leading-snug tracking-tight">
               {product.title}
             </h3>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              {[product.brand, priceRange(product)].filter(Boolean).join(" · ")}
+            <p className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
+              {[product.brand, priceRange(product), supplierLabel(product)]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
             {product.ingredients ? (
               <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
@@ -390,11 +500,113 @@ function ProductCard({
                   Out of stock
                 </Pill>
               ) : null}
+              {product.source === "kohepets" ? (
+                <>
+                  <Pill className="rounded-md bg-primary/10 text-primary">
+                    Online only
+                  </Pill>
+                  <Pill className="rounded-md bg-muted text-muted-foreground">
+                    Delivery
+                  </Pill>
+                </>
+              ) : null}
             </div>
           </div>
         </CardContent>
       </SpotlightCard>
     </button>
+  );
+}
+
+function RadiusControl({
+  count,
+  label,
+  onRadiusChange,
+  radiusKm,
+}: {
+  count: number;
+  label: string;
+  onRadiusChange: (radiusKm: number) => void;
+  radiusKm: number;
+}) {
+  return (
+    <div className="mt-4 rounded-xl border border-border bg-muted/30 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Radar className="size-4 shrink-0 text-primary" />
+          <p className="truncate text-sm font-medium text-foreground">
+            Search radius
+          </p>
+        </div>
+        <p className="shrink-0 text-sm font-semibold tabular-nums text-primary">
+          {radiusKm} km
+        </p>
+      </div>
+      <Slider
+        aria-label="Search radius"
+        className="mt-3"
+        max={MAX_RADIUS_KM}
+        min={MIN_RADIUS_KM}
+        onValueChange={(value) => onRadiusChange(value[0] ?? radiusKm)}
+        step={RADIUS_STEP_KM}
+        value={[radiusKm]}
+      />
+      <p className="mt-2 text-xs text-muted-foreground">
+        {count} {label} glowing within this radius
+      </p>
+    </div>
+  );
+}
+
+function ResultsPager({
+  currentPage,
+  label,
+  onPageChange,
+  pageEnd,
+  pageStart,
+  totalPages,
+  totalResults,
+}: {
+  currentPage: number;
+  label: string;
+  onPageChange: (page: number) => void;
+  pageEnd: number;
+  pageStart: number;
+  totalPages: number;
+  totalResults: number;
+}) {
+  if (totalResults === 0) return null;
+  return (
+    <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border bg-card px-5 py-3 md:px-7">
+      <p className="min-w-0 truncate text-xs text-muted-foreground">
+        Showing {pageStart + 1}–{pageEnd} of {totalResults} {label}
+      </p>
+      <div className="flex shrink-0 items-center gap-1.5">
+        <Button
+          aria-label="Previous page"
+          disabled={currentPage <= 1}
+          onClick={() => onPageChange(currentPage - 1)}
+          size="icon-sm"
+          type="button"
+          variant="outline"
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
+        <span className="min-w-10 text-center text-xs font-medium tabular-nums text-muted-foreground">
+          {currentPage}/{totalPages}
+        </span>
+        <Button
+          aria-label="Next page"
+          disabled={currentPage >= totalPages}
+          onClick={() => onPageChange(currentPage + 1)}
+          size="icon-sm"
+          type="button"
+          variant="outline"
+        >
+          <ChevronRight className="size-4" />
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -521,10 +733,27 @@ function ProductDetail({
         {product.title}
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        {[product.brand, priceRange(product), product.petType]
+        {[
+          product.brand,
+          priceRange(product),
+          product.petType,
+          supplierLabel(product),
+        ]
           .filter(Boolean)
           .join(" · ")}
       </p>
+      {product.source === "kohepets" ? (
+        <div className="mt-3 rounded-xl border border-border bg-muted/40 p-3">
+          <p className="text-sm font-medium text-foreground">
+            Kohepets online catalog
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Kohepets does not offer walk-in shopping or self-collection, so this
+            product appears as an online delivery option rather than a map
+            location.
+          </p>
+        </div>
+      ) : null}
       {product.ingredients ? (
         <div className="mt-3 rounded-xl border border-border bg-muted/40 p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

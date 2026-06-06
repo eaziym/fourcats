@@ -32,8 +32,13 @@ function parseArgs(argv) {
     const a = argv[i];
     const next = argv[i + 1];
     if (a === "--base-only") args.enrich = false;
-    else if (a === "--concurrency" && next) args.concurrency = Number(next), (i += 1);
-    else if (a === "--timeout" && next) args.timeout = Number(next), (i += 1);
+    else if (a === "--concurrency" && next) {
+      args.concurrency = Number(next);
+      i += 1;
+    } else if (a === "--timeout" && next) {
+      args.timeout = Number(next);
+      i += 1;
+    }
   }
   return args;
 }
@@ -50,20 +55,46 @@ async function fetchHtml(url, timeout) {
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const ct = res.headers.get("content-type") ?? "";
-  if (!ct.includes("html") && !ct.includes("text")) throw new Error(`non-html ${ct}`);
+  if (!ct.includes("html") && !ct.includes("text"))
+    throw new Error(`non-html ${ct}`);
   return await res.text();
 }
 
-function extractHrefs(html, baseUrl) {
+function extractAnchorHrefs(html) {
   const out = [];
-  for (const m of html.matchAll(/href\s*=\s*["']([^"']+)["']/gi)) {
+  for (const m of html.matchAll(
+    /<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>/gi,
+  )) {
     out.push(decodeHtmlEntities(m[1]));
   }
   return out;
 }
 
+function isStaticAssetUrl(url) {
+  try {
+    const u = new URL(url, "https://example.com");
+    return /\.(css|js|mjs|map|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|eot|pdf|zip)$/i.test(
+      u.pathname,
+    );
+  } catch {
+    return true;
+  }
+}
+
+function isInternalBookingLikePath(url) {
+  try {
+    const u = new URL(url, "https://example.com");
+    if (isStaticAssetUrl(u.toString())) return false;
+    return /\/(contact|contact-us|book|booking|appointment|enquir)(\/|$|-)/i.test(
+      u.pathname,
+    );
+  } catch {
+    return false;
+  }
+}
+
 function extractContacts(html, baseUrl) {
-  const hrefs = extractHrefs(html, baseUrl);
+  const hrefs = extractAnchorHrefs(html);
   const emails = new Set();
   const whatsapp = new Set();
   const calendly = new Set();
@@ -82,7 +113,7 @@ function extractContacts(html, baseUrl) {
       try {
         calendly.add(new URL(href, baseUrl).toString());
       } catch {}
-    } else if (/\/(contact|book|booking|appointment|enquir)/.test(lower)) {
+    } else if (isInternalBookingLikePath(href)) {
       try {
         contactForms.add(new URL(href, baseUrl).toString());
       } catch {}
@@ -129,18 +160,23 @@ async function addContact(pool, placeId, c) {
 // Minimal concurrency pool.
 async function pmap(items, concurrency, worker) {
   let i = 0;
-  const runners = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
-    while (i < items.length) {
-      const idx = i++;
-      await worker(items[idx], idx);
-    }
-  });
+  const runners = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    async () => {
+      while (i < items.length) {
+        const idx = i++;
+        await worker(items[idx], idx);
+      }
+    },
+  );
   await Promise.all(runners);
 }
 
 async function main() {
   const args = parseArgs(process.argv);
-  console.log(`Backfill contacts -> ${describeTarget()} | enrich=${args.enrich}`);
+  console.log(
+    `Backfill contacts -> ${describeTarget()} | enrich=${args.enrich}`,
+  );
   const pool = getPool();
 
   const { rows: places } = await pool.query(
@@ -148,6 +184,27 @@ async function main() {
        from public.service_places order by created_at`,
   );
   console.log(`${places.length} places`);
+
+  const { rowCount: cleanedBookingUrls } = await pool.query(`
+    update public.service_places
+       set booking_url = null,
+           updated_at = now()
+     where booking_url ~* '\\.(css|js|mjs|map|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|eot|pdf|zip)(\\?|$)'
+        or booking_url ~* '/wp-content/plugins/'
+  `);
+  const { rowCount: cleanedContactRows } = await pool.query(`
+    delete from public.service_place_contacts
+     where method = 'contact_form'
+       and (
+         value ~* '\\.(css|js|mjs|map|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|eot|pdf|zip)(\\?|$)'
+         or value ~* '/wp-content/plugins/'
+       )
+  `);
+  if (cleanedBookingUrls || cleanedContactRows) {
+    console.log(
+      `cleanup: removed ${cleanedBookingUrls} bad booking_url values and ${cleanedContactRows} bad contact rows`,
+    );
+  }
 
   // --- base pass (no network) ---
   let baseContacts = 0;
@@ -190,7 +247,9 @@ async function main() {
 
   // --- enrich pass (visit websites) ---
   const withSites = places.filter((p) => p.website_url);
-  console.log(`enriching ${withSites.length} websites (concurrency ${args.concurrency})...`);
+  console.log(
+    `enriching ${withSites.length} websites (concurrency ${args.concurrency})...`,
+  );
   const stats = { emails: 0, whatsapp: 0, calendly: 0, forms: 0, failed: 0 };
 
   await pmap(withSites, args.concurrency, async (p) => {
@@ -209,36 +268,49 @@ async function main() {
           found.calendly = [...new Set([...found.calendly, ...c2.calendly])];
         } catch {}
       }
-    } catch (e) {
+    } catch {
       stats.failed++;
       return;
     }
 
     for (const e of found.emails) {
       await addContact(pool, p.id, {
-        method: "email", value: e, normalized_value: e,
-        is_booking_capable: true, source: "website", confidence: 0.7,
+        method: "email",
+        value: e,
+        normalized_value: e,
+        is_booking_capable: true,
+        source: "website",
+        confidence: 0.7,
       });
       stats.emails++;
     }
     for (const w of found.whatsapp) {
       await addContact(pool, p.id, {
-        method: "whatsapp", value: w, is_booking_capable: true,
-        source: "website", confidence: 0.8,
+        method: "whatsapp",
+        value: w,
+        is_booking_capable: true,
+        source: "website",
+        confidence: 0.8,
       });
       stats.whatsapp++;
     }
     for (const c of found.calendly) {
       await addContact(pool, p.id, {
-        method: "calendly", value: c, is_booking_capable: true,
-        source: "website", confidence: 0.9,
+        method: "calendly",
+        value: c,
+        is_booking_capable: true,
+        source: "website",
+        confidence: 0.9,
       });
       stats.calendly++;
     }
     for (const f of found.contactForms) {
       await addContact(pool, p.id, {
-        method: "contact_form", value: f, is_booking_capable: true,
-        source: "website", confidence: 0.6,
+        method: "contact_form",
+        value: f,
+        is_booking_capable: true,
+        source: "website",
+        confidence: 0.6,
       });
       stats.forms++;
     }
@@ -251,7 +323,13 @@ async function main() {
       await pool.query(
         `update public.service_places
            set primary_email = coalesce($2, primary_email),
-               booking_url = coalesce(booking_url, $3),
+               booking_url = case
+                 when booking_url is null
+                   or booking_url ~* '\\.(css|js|mjs|map|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|eot|pdf|zip)(\\?|$)'
+                   or booking_url ~* '/wp-content/plugins/'
+                   then $3
+                 else booking_url
+               end,
                contact_source = 'website', updated_at = now()
          where id = $1`,
         [p.id, email, bookingUrl],

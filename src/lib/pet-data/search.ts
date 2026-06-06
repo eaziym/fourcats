@@ -13,6 +13,11 @@ import OpenAI from "openai";
 import { Pool } from "pg";
 
 const EMBEDDING_MODEL = "text-embedding-3-small";
+const ONEMAP_AUTH_URL = "https://www.onemap.gov.sg/api/auth/post/getToken";
+const ONEMAP_SEARCH_URL =
+  "https://www.onemap.gov.sg/api/common/elastic/search";
+
+type LatLng = { lat: number; lng: number };
 
 let pool: Pool | undefined;
 function getPool(): Pool {
@@ -227,14 +232,134 @@ export function searchVets(opts: PlaceSearchOptions) {
   return searchPlaces("vet", opts);
 }
 
+type OneMapToken = {
+  token: string;
+  expiresAtMs: number;
+};
+
+type OneMapSearchResult = {
+  POSTAL?: string;
+  LATITUDE?: string;
+  LONGITUDE?: string;
+  LONGTITUDE?: string;
+};
+
+type OneMapSearchResponse = {
+  error?: string;
+  results?: OneMapSearchResult[];
+};
+
+let oneMapToken: OneMapToken | undefined;
+
+function sixDigitPostal(postalCode: string): string | null {
+  const digits = postalCode.replace(/\D/g, "");
+  return digits.length >= 6 ? digits.slice(0, 6) : null;
+}
+
+function inSingaporeBounds({ lat, lng }: LatLng): boolean {
+  return lat >= 1.16 && lat <= 1.48 && lng >= 103.59 && lng <= 104.05;
+}
+
+async function getOneMapToken(): Promise<string | null> {
+  const configuredToken = process.env.ONEMAP_API_TOKEN?.trim();
+  if (configuredToken) return configuredToken;
+
+  const email = (
+    process.env.ONEMAP_EMAIL ??
+    process.env.ONEMAP_API_EMAIL ??
+    ""
+  ).trim();
+  const password = (
+    process.env.ONEMAP_PASSWORD ??
+    process.env.ONEMAP_API_PASSWORD ??
+    process.env.ONEMAP_EMAIL_PASSWORD ??
+    ""
+  ).trim();
+  if (!email || !password) return null;
+
+  const now = Date.now();
+  if (oneMapToken && oneMapToken.expiresAtMs > now + 60_000) {
+    return oneMapToken.token;
+  }
+
+  const res = await fetch(ONEMAP_AUTH_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(5_000),
+  });
+  if (!res.ok) return null;
+
+  const data = (await res.json()) as {
+    access_token?: string;
+    expiry_timestamp?: string;
+  };
+  if (!data.access_token) return null;
+
+  oneMapToken = {
+    token: data.access_token,
+    expiresAtMs: Number(data.expiry_timestamp ?? 0) * 1000,
+  };
+  return oneMapToken.token;
+}
+
+/**
+ * Resolves a full Singapore postal code with OneMap's address search API.
+ * For full postcodes, returns null rather than showing a misleading district
+ * centroid when the geocoder is not configured or unavailable.
+ */
+export async function resolvePostalToLatLng(
+  postalCode: string,
+): Promise<LatLng | null> {
+  const postal = sixDigitPostal(postalCode);
+  if (postal) {
+    const token = await getOneMapToken().catch(() => null);
+    if (token) {
+      const params = new URLSearchParams({
+        searchVal: postal,
+        returnGeom: "Y",
+        getAddrDetails: "Y",
+        pageNum: "1",
+      });
+      const geocoded = await fetch(`${ONEMAP_SEARCH_URL}?${params}`, {
+        cache: "no-store",
+        headers: { Authorization: token },
+        signal: AbortSignal.timeout(5_000),
+      })
+        .then(async (res) => {
+          if (!res.ok) return null;
+          const data = (await res.json()) as OneMapSearchResponse;
+          if (data.error) return null;
+          const match =
+            data.results?.find((r) => r.POSTAL === postal) ?? data.results?.[0];
+          if (!match) return null;
+          const lat = Number(match.LATITUDE);
+          const lng = Number(match.LONGITUDE ?? match.LONGTITUDE);
+          const coords = { lat, lng };
+          return Number.isFinite(lat) &&
+            Number.isFinite(lng) &&
+            inSingaporeBounds(coords)
+            ? coords
+            : null;
+        })
+        .catch(() => null);
+      if (geocoded) return geocoded;
+    }
+    return null;
+  }
+
+  return postalToLatLng(postalCode);
+}
+
 /**
  * Approximate lat/lng for a Singapore postal code using postal-district
- * centroids (first 2 digits). Good enough to seed nearby_service_places without
- * a Geocoding API call. Returns null for unknown districts.
+ * centroids (first 2 digits). This is only for partial postal prefixes and
+ * scripts; full app discovery uses resolvePostalToLatLng instead.
  */
 export function postalToLatLng(
   postalCode: string,
-): { lat: number; lng: number } | null {
+): LatLng | null {
   const digits = postalCode.replace(/\D/g, "");
   if (digits.length < 2) return null;
   const district = digits.slice(0, 2);
@@ -242,86 +367,46 @@ export function postalToLatLng(
 }
 
 // Centroids by 2-digit postal district (approx). Covers the main island.
-const SG_DISTRICT_CENTROIDS: Record<string, { lat: number; lng: number }> = {
-  "01": { lat: 1.2833, lng: 103.8517 },
-  "02": { lat: 1.2792, lng: 103.843 },
-  "03": { lat: 1.2761, lng: 103.834 },
-  "04": { lat: 1.2649, lng: 103.823 },
-  "05": { lat: 1.2746, lng: 103.79 },
-  "06": { lat: 1.2901, lng: 103.852 },
-  "07": { lat: 1.2996, lng: 103.857 },
-  "08": { lat: 1.3088, lng: 103.857 },
-  "09": { lat: 1.3052, lng: 103.832 },
-  "10": { lat: 1.3104, lng: 103.815 },
-  "11": { lat: 1.3231, lng: 103.815 },
-  "12": { lat: 1.3257, lng: 103.857 },
-  "13": { lat: 1.3344, lng: 103.882 },
-  "14": { lat: 1.3196, lng: 103.886 },
-  "15": { lat: 1.3047, lng: 103.905 },
-  "16": { lat: 1.3236, lng: 103.943 },
-  "17": { lat: 1.3409, lng: 103.961 },
-  "18": { lat: 1.3526, lng: 103.945 },
-  "19": { lat: 1.3667, lng: 103.892 },
-  "20": { lat: 1.3565, lng: 103.848 },
-  "21": { lat: 1.3387, lng: 103.776 },
-  "22": { lat: 1.3329, lng: 103.743 },
-  "23": { lat: 1.3636, lng: 103.764 },
-  "24": { lat: 1.3771, lng: 103.74 },
-  "25": { lat: 1.3833, lng: 103.745 },
-  "26": { lat: 1.3795, lng: 103.813 },
-  "27": { lat: 1.4255, lng: 103.835 },
-  "28": { lat: 1.4019, lng: 103.87 },
-  "29": { lat: 1.3667, lng: 103.892 },
-  "30": { lat: 1.3142, lng: 103.864 },
-  "31": { lat: 1.3261, lng: 103.871 },
-  "32": { lat: 1.3296, lng: 103.857 },
-  "33": { lat: 1.3196, lng: 103.886 },
-  "34": { lat: 1.3196, lng: 103.9 },
-  "35": { lat: 1.31, lng: 103.892 },
-  "36": { lat: 1.318, lng: 103.886 },
-  "37": { lat: 1.318, lng: 103.892 },
-  "38": { lat: 1.3104, lng: 103.886 },
-  "39": { lat: 1.3142, lng: 103.892 },
-  "40": { lat: 1.3047, lng: 103.905 },
-  "41": { lat: 1.3047, lng: 103.9 },
-  "42": { lat: 1.3047, lng: 103.918 },
-  "43": { lat: 1.3047, lng: 103.918 },
-  "44": { lat: 1.3104, lng: 103.918 },
-  "45": { lat: 1.3104, lng: 103.93 },
-  "46": { lat: 1.3329, lng: 103.943 },
-  "47": { lat: 1.3409, lng: 103.943 },
-  "48": { lat: 1.3409, lng: 103.955 },
-  "49": { lat: 1.3526, lng: 103.945 },
-  "50": { lat: 1.3526, lng: 103.96 },
-  "51": { lat: 1.3526, lng: 103.96 },
-  "52": { lat: 1.3496, lng: 103.943 },
-  "53": { lat: 1.3636, lng: 103.892 },
-  "54": { lat: 1.3636, lng: 103.9 },
-  "55": { lat: 1.3636, lng: 103.87 },
-  "56": { lat: 1.3565, lng: 103.835 },
-  "57": { lat: 1.3565, lng: 103.825 },
-  "58": { lat: 1.3142, lng: 103.806 },
-  "59": { lat: 1.3296, lng: 103.806 },
-  "60": { lat: 1.3387, lng: 103.697 },
-  "61": { lat: 1.3387, lng: 103.71 },
-  "62": { lat: 1.3387, lng: 103.71 },
-  "63": { lat: 1.3387, lng: 103.71 },
-  "64": { lat: 1.3387, lng: 103.72 },
-  "65": { lat: 1.3387, lng: 103.74 },
-  "66": { lat: 1.3387, lng: 103.75 },
-  "67": { lat: 1.3567, lng: 103.75 },
-  "68": { lat: 1.3567, lng: 103.75 },
-  "69": { lat: 1.3567, lng: 103.69 },
-  "70": { lat: 1.3567, lng: 103.69 },
-  "71": { lat: 1.3567, lng: 103.69 },
-  "72": { lat: 1.4019, lng: 103.74 },
-  "73": { lat: 1.4019, lng: 103.74 },
-  "75": { lat: 1.4498, lng: 103.82 },
-  "76": { lat: 1.4498, lng: 103.82 },
-  "77": { lat: 1.4255, lng: 103.78 },
-  "78": { lat: 1.4255, lng: 103.78 },
-  "79": { lat: 1.4255, lng: 103.79 },
-  "80": { lat: 1.3795, lng: 103.9 },
-  "81": { lat: 1.3565, lng: 103.96 },
+const SG_DISTRICT_CENTROIDS: Record<string, LatLng> = {
+  "01": { lat: 1.2833, lng: 103.8517 }, "02": { lat: 1.2792, lng: 103.843 },
+  "03": { lat: 1.2761, lng: 103.834 }, "04": { lat: 1.2649, lng: 103.823 },
+  "05": { lat: 1.2746, lng: 103.79 }, "06": { lat: 1.2901, lng: 103.852 },
+  "07": { lat: 1.2996, lng: 103.857 }, "08": { lat: 1.3088, lng: 103.857 },
+  "09": { lat: 1.3052, lng: 103.832 }, "10": { lat: 1.3104, lng: 103.815 },
+  "11": { lat: 1.3231, lng: 103.815 }, "12": { lat: 1.3257, lng: 103.857 },
+  "13": { lat: 1.3344, lng: 103.882 }, "14": { lat: 1.3196, lng: 103.886 },
+  "15": { lat: 1.3047, lng: 103.905 }, "16": { lat: 1.3236, lng: 103.943 },
+  "17": { lat: 1.3409, lng: 103.961 }, "18": { lat: 1.3526, lng: 103.945 },
+  "19": { lat: 1.3667, lng: 103.892 }, "20": { lat: 1.3565, lng: 103.848 },
+  "21": { lat: 1.3387, lng: 103.776 }, "22": { lat: 1.3329, lng: 103.743 },
+  "23": { lat: 1.3636, lng: 103.764 }, "24": { lat: 1.3771, lng: 103.74 },
+  "25": { lat: 1.3833, lng: 103.745 }, "26": { lat: 1.3795, lng: 103.813 },
+  "27": { lat: 1.4255, lng: 103.835 }, "28": { lat: 1.4019, lng: 103.87 },
+  "29": { lat: 1.3667, lng: 103.892 }, "30": { lat: 1.3142, lng: 103.864 },
+  "31": { lat: 1.3261, lng: 103.871 }, "32": { lat: 1.3296, lng: 103.857 },
+  "33": { lat: 1.3196, lng: 103.886 }, "34": { lat: 1.3196, lng: 103.9 },
+  "35": { lat: 1.31, lng: 103.892 }, "36": { lat: 1.318, lng: 103.886 },
+  "37": { lat: 1.318, lng: 103.892 }, "38": { lat: 1.3104, lng: 103.886 },
+  "39": { lat: 1.3142, lng: 103.892 }, "40": { lat: 1.3047, lng: 103.905 },
+  "41": { lat: 1.3047, lng: 103.9 }, "42": { lat: 1.3047, lng: 103.918 },
+  "43": { lat: 1.3047, lng: 103.918 }, "44": { lat: 1.3104, lng: 103.918 },
+  "45": { lat: 1.3104, lng: 103.93 }, "46": { lat: 1.3329, lng: 103.943 },
+  "47": { lat: 1.3409, lng: 103.943 }, "48": { lat: 1.3409, lng: 103.955 },
+  "49": { lat: 1.3526, lng: 103.945 }, "50": { lat: 1.3526, lng: 103.96 },
+  "51": { lat: 1.3526, lng: 103.96 }, "52": { lat: 1.3496, lng: 103.943 },
+  "53": { lat: 1.3636, lng: 103.892 }, "54": { lat: 1.3636, lng: 103.9 },
+  "55": { lat: 1.3636, lng: 103.87 }, "56": { lat: 1.3565, lng: 103.835 },
+  "57": { lat: 1.3565, lng: 103.825 }, "58": { lat: 1.3142, lng: 103.806 },
+  "59": { lat: 1.3296, lng: 103.806 }, "60": { lat: 1.3387, lng: 103.697 },
+  "61": { lat: 1.3387, lng: 103.71 }, "62": { lat: 1.3387, lng: 103.71 },
+  "63": { lat: 1.3387, lng: 103.71 }, "64": { lat: 1.3387, lng: 103.72 },
+  "65": { lat: 1.3387, lng: 103.74 }, "66": { lat: 1.3387, lng: 103.75 },
+  "67": { lat: 1.3567, lng: 103.75 }, "68": { lat: 1.3567, lng: 103.75 },
+  "69": { lat: 1.3567, lng: 103.69 }, "70": { lat: 1.3567, lng: 103.69 },
+  "71": { lat: 1.3567, lng: 103.69 }, "72": { lat: 1.4019, lng: 103.74 },
+  "73": { lat: 1.4019, lng: 103.74 }, "75": { lat: 1.4498, lng: 103.82 },
+  "76": { lat: 1.4498, lng: 103.82 }, "77": { lat: 1.4255, lng: 103.78 },
+  "78": { lat: 1.4255, lng: 103.78 }, "79": { lat: 1.4255, lng: 103.79 },
+  "80": { lat: 1.3795, lng: 103.9 }, "81": { lat: 1.3565, lng: 103.96 },
   "82": { lat: 1.3795, lng: 103.96 },
 };
