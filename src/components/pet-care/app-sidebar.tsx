@@ -69,16 +69,16 @@ export function SidebarContent({
 
   return (
     <>
-      <div
-        className={cn(
-          "flex flex-col border-b border-sidebar-border px-1 py-6",
-          variant === "drawer" ? "items-center text-center" : "items-stretch",
-        )}
-      >
-        <div className="flex items-center gap-3 px-1 pb-3">
-          <BrandMascot size={42} />
+      <div className="border-b border-sidebar-border pb-4">
+        <div
+          className={cn(
+            "flex h-[66px] items-center gap-3 px-2",
+            variant === "drawer" && "justify-center text-center",
+          )}
+        >
+          <BrandMascot size={40} />
           <div className="min-w-0 text-left">
-            <p className="font-llp-display text-base font-bold tracking-tight text-primary leading-tight">
+            <p className="font-llp-display text-base font-bold leading-tight tracking-tight text-primary">
               Little Lovely Pets
             </p>
             <p className="text-[11px] font-medium text-muted-foreground">
@@ -87,7 +87,7 @@ export function SidebarContent({
           </div>
         </div>
 
-        <div className="mt-1 flex items-center gap-3 rounded-xl border border-border/60 bg-muted/30 px-2 py-2">
+        <div className="mx-1 mt-1 flex items-center gap-3 rounded-xl border border-border/60 bg-muted/30 px-2 py-2">
           <Avatar className="size-10 border-2 border-primary/25">
             <AvatarImage
               alt={pet?.name ? `${pet.name} profile` : "Active pet"}
@@ -189,7 +189,7 @@ export function AppSidebar({
         boxShadow: "var(--llp-sh-1)",
       }}
     >
-      <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-3.5 pb-3.5 pt-[18px]">
+      <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-3.5 pb-3.5 pt-0">
         <SidebarContent active={active} variant="rail" />
         <SidebarGrip onMouseDown={onGripMouseDown} />
       </div>

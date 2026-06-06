@@ -2,6 +2,7 @@ import {
   Bot,
   Check,
   ClipboardList,
+  Cross,
   Heart,
   MapPin,
   ShoppingBag,
@@ -21,6 +22,7 @@ import { PetCareShell } from "@/components/pet-care/shell";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
+import { getNearbyTop, type PlaceDTO } from "@/lib/discovery-queries";
 import { petPlaceholderImage } from "@/lib/pet-data";
 import type { PetCareLogDTO, PetDTO } from "@/lib/pet-queries";
 import { getPetCareContext } from "@/lib/pet-queries";
@@ -72,9 +74,11 @@ function careLogPresentation(log: PetCareLogDTO) {
 function Dashboard({
   userDisplayName,
   pet,
+  nearbyVets,
 }: {
   userDisplayName: string;
   pet: PetDTO;
+  nearbyVets: PlaceDTO[];
 }) {
   const avatarSrc = petPlaceholderImage(pet.species);
   const ageLabel = pet.ageYears != null ? `${Number(pet.ageYears)} yrs` : "—";
@@ -125,6 +129,7 @@ function Dashboard({
           />
           <NearbyCard
             nearLabel={nearLabel}
+            vets={nearbyVets}
             healthSummary={healthSummary}
             healthDetail={healthDetail}
           />
@@ -314,23 +319,60 @@ function KibbleReminder({
 
 function NearbyCard({
   nearLabel,
+  vets,
   healthSummary,
   healthDetail,
 }: {
   nearLabel: string;
+  vets: PlaceDTO[];
   healthSummary: string;
   healthDetail: string;
 }) {
   return (
     <SpotlightCard className="border-0">
       <CardContent className="p-8">
-        <div className="mb-5 flex items-center gap-3 font-medium">
-          <MapPin className="size-6 text-primary" />
-          Nearby — {nearLabel}
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <span className="flex items-center gap-3 font-medium">
+            <MapPin className="size-6 text-primary" />
+            Nearby vets — {nearLabel}
+          </span>
+          <Button className="text-primary" size="sm" variant="ghost" asChild>
+            <a href="/discovery">See all</a>
+          </Button>
         </div>
-        <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-border bg-muted/50 px-4 text-center text-sm text-muted-foreground">
-          Map preview (connect a maps provider to show live clinics)
-        </div>
+        {vets.length === 0 ? (
+          <div className="flex h-28 items-center justify-center rounded-lg border border-dashed border-border bg-muted/50 px-4 text-center text-sm text-muted-foreground">
+            Add your postal code in Pet Profiles to see clinics near you.
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {vets.slice(0, 3).map((vet) => (
+              <a
+                key={vet.id}
+                href={vet.googleMapsUrl ?? "/discovery"}
+                target={vet.googleMapsUrl ? "_blank" : undefined}
+                rel={vet.googleMapsUrl ? "noreferrer" : undefined}
+                className="flex items-center gap-4 rounded-xl border border-border bg-muted/30 p-4 transition-colors hover:bg-muted/60"
+              >
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                  <Cross className="size-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{vet.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {vet.rating != null ? `★ ${vet.rating.toFixed(1)}` : "New"}
+                    {vet.userRatingCount ? ` (${vet.userRatingCount})` : ""}
+                    {vet.distanceKm != null
+                      ? ` · ${vet.distanceKm.toFixed(1)} km`
+                      : vet.neighbourhood
+                        ? ` · ${vet.neighbourhood}`
+                        : ""}
+                  </p>
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
         <div className="mt-5 flex justify-between text-sm font-medium">
           <span>{healthSummary}</span>
           <span className="max-w-[55%] text-right text-muted-foreground">
@@ -348,9 +390,15 @@ export default async function Home() {
     redirect("/onboarding");
   }
 
+  const { places: nearbyVets } = await getNearbyTop(pet, "vet", 3);
+
   return (
     <PetCareShell active="dashboard">
-      <Dashboard userDisplayName={userDisplayName} pet={pet} />
+      <Dashboard
+        userDisplayName={userDisplayName}
+        pet={pet}
+        nearbyVets={nearbyVets}
+      />
     </PetCareShell>
   );
 }
