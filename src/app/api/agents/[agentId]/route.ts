@@ -1,5 +1,4 @@
 import { extractAllTextOutput, run, user as userMessage } from "@openai/agents";
-import { generateText, type ModelMessage, stepCountIs } from "ai";
 import { NextResponse } from "next/server";
 import {
   type BookingAgentContext,
@@ -17,21 +16,15 @@ import {
   type GroomingAgentContext,
   type ServicePlaceCard,
 } from "@/lib/agents/grooming-agent";
+import { runGeneralAgent } from "@/lib/agents/handlers";
 import type { MemeAgentContext } from "@/lib/agents/meme-agent";
 import { memeAgent } from "@/lib/agents/meme-agent";
 import { buildVetAgent, type VetAgentContext } from "@/lib/agents/vet-agent";
-import { buildAssistantSystemPrompt, buildPetTools } from "@/lib/ai/pet-tools";
-import { getModel, SYSTEM_PROMPT } from "@/lib/ai/providers";
 import { getUser } from "@/lib/auth/server";
 import type { BookingDraft } from "@/lib/booking/types";
 import { downscaleForVisionPreview } from "@/lib/image/downscale-for-vision";
 import { enrichPlaceCards } from "@/lib/pet-data/enrich-places";
-import {
-  buildPetProfilePrompt,
-  buildRecommendationContext,
-  buildUserSettingsPrompt,
-  speciesToPetType,
-} from "@/lib/pet-data/format";
+import { buildRecommendationContext } from "@/lib/pet-data/format";
 import { postalToLatLng } from "@/lib/pet-data/search";
 import { getPetCareContext } from "@/lib/pet-queries";
 
@@ -219,37 +212,21 @@ async function handleGeneralAgent(req: Request): Promise<Response> {
     return NextResponse.json({ error: "Empty message." }, { status: 400 });
   }
 
-  const { pet, settings } = await getPetCareContext();
-  const system = buildAssistantSystemPrompt(
-    SYSTEM_PROMPT,
-    buildPetProfilePrompt(pet),
-    buildUserSettingsPrompt(settings),
-  );
-  const petLatLng = pet?.locationPostalCode
-    ? postalToLatLng(pet.locationPostalCode)
-    : null;
+  const result = await runGeneralAgent({
+    message,
+    history: body.history,
+  });
 
-  const history: ModelMessage[] = (body.history ?? [])
-    .filter((m) => m.content?.trim())
-    .slice(-10)
-    .map((m) => ({ role: m.role, content: m.content }));
-
-  try {
-    const { text } = await generateText({
-      model: getModel(),
-      system,
-      messages: [...history, { role: "user", content: message }],
-      stopWhen: stepCountIs(5),
-      tools: buildPetTools({
-        defaultPetType: speciesToPetType(pet?.species),
-        petLatLng,
-      }),
-    });
-    return NextResponse.json({ assistantText: text || undefined });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Agent run failed";
-    return NextResponse.json({ error: msg }, { status: 500 });
+  if (result.error) {
+    return NextResponse.json(
+      { error: result.error },
+      { status: result.status ?? 500 },
+    );
   }
+
+  return NextResponse.json({
+    assistantText: result.assistantText || undefined,
+  });
 }
 
 function parseToolError(

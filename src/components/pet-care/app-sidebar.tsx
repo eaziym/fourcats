@@ -89,20 +89,23 @@ export function SidebarContent({
 
       <div className="mt-auto space-y-3 border-t border-sidebar-border p-3">
         <SuggestedQuestionBox onNavigate={onNavigate} />
-        <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card/50 px-2 py-1">
-          <span className="px-2 text-xs font-medium text-muted-foreground">
-            Theme
-          </span>
-          <ModeToggle />
-        </div>
         <div className="grid gap-0.5">
-          <button
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            type="button"
-          >
-            <Settings className="size-4" />
-            Settings
-          </button>
+          <div className="flex items-center gap-0.5">
+            <Link
+              className={cn(
+                "flex min-w-0 flex-1 items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                active === "settings"
+                  ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+              )}
+              href="/settings"
+              onClick={onNavigate}
+            >
+              <Settings className="size-4 shrink-0" />
+              Settings
+            </Link>
+            <ModeToggle compact />
+          </div>
           <button
             className="flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             type="button"

@@ -11,19 +11,16 @@ import {
   runMemeAgent,
   runVetAgent,
 } from "@/lib/agents/handlers";
-import { getAgentLabel } from "@/lib/agents/registry";
+import {
+  GENERAL_ORCHESTRATOR_TOOLS,
+  getAgentLabel,
+} from "@/lib/agents/registry";
 import { getModel } from "@/lib/ai/providers";
 import type { ChatMessageData, DelegationStepDTO } from "@/lib/chat/types";
 import { buildPetProfilePrompt } from "@/lib/pet-data/format";
 import { getPetCareContext } from "@/lib/pet-queries";
 
-const SPECIALIST_IDS = [
-  "food",
-  "grooming",
-  "vet",
-  "meme",
-  "booking",
-] as const;
+const SPECIALIST_IDS = ["food", "grooming", "vet", "meme", "booking"] as const;
 
 export type SpecialistAgentId = (typeof SPECIALIST_IDS)[number];
 
@@ -225,28 +222,21 @@ export async function orchestrateAssistantRequest(args: {
       label: getAgentLabel("general") ?? "Pet assistant",
       status: "done",
       reasoning,
+      tools: agents.length > 0 ? [...GENERAL_ORCHESTRATOR_TOOLS] : ["plan"],
     },
   ];
 
   const messages: OrchestrationMessage[] = [];
 
   if (agents.length === 0) {
-    steps.push({
-      agentId: "general",
-      label: getAgentLabel("general") ?? "Pet assistant",
-      status: "running",
-    });
+    steps[0].status = "running";
 
     const result = await runGeneralAgent({
       message: message || "Share a helpful care tip for my pet today.",
       history: args.history,
     });
 
-    const last = steps[steps.length - 1];
-    if (last) {
-      last.status = result.error ? "error" : "done";
-      last.tools = result.toolsUsed;
-    }
+    steps[0].status = result.error ? "error" : "done";
 
     const { content, data } = agentResultToMessageContent("general", result);
     messages.push({

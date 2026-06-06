@@ -12,8 +12,9 @@ describe("buildMailtoUrl", () => {
       "Please book a slot.",
     );
     assert.equal(url.startsWith("mailto:hello%40clinic.sg?"), true);
-    assert.match(url, /subject=Booking/);
-    assert.match(url, /body=Please/);
+    assert.match(url, /subject=Booking%20for%20Max/);
+    assert.match(url, /body=Please%20book%20a%20slot\./);
+    assert.doesNotMatch(url, /\+/);
   });
 
   it("trims recipients and preserves multiline draft content", () => {

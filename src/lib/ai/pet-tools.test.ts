@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { buildAssistantSystemPrompt, buildPetTools } from "./pet-tools";
+import {
+  buildAssistantSystemPrompt,
+  buildGeneralOrchestratorPrompt,
+  buildPetTools,
+} from "./pet-tools";
 
 type FoodToolInput = {
   query: string;
@@ -32,6 +36,20 @@ describe("buildAssistantSystemPrompt", () => {
     assert.match(prompt, /^Base assistant prompt\./);
     assert.match(prompt, /search_food: real pet-food products/);
     assert.match(prompt, /search_groomers \/ search_vets/);
+    assert.match(prompt, /--- PET PROFILE ---\nName: Mochi\nSpecies: Cat$/);
+  });
+});
+
+describe("buildGeneralOrchestratorPrompt", () => {
+  it("describes plan and delegate without search tools", () => {
+    const prompt = buildGeneralOrchestratorPrompt(
+      "Base assistant prompt.",
+      "Name: Mochi\nSpecies: Cat",
+    );
+
+    assert.match(prompt, /plan:/);
+    assert.match(prompt, /delegate:/);
+    assert.doesNotMatch(prompt, /search_food:/);
     assert.match(prompt, /--- PET PROFILE ---\nName: Mochi\nSpecies: Cat$/);
   });
 });

@@ -4,10 +4,18 @@ import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-export function ModeToggle({ className }: { className?: string }) {
+export function ModeToggle({
+  className,
+  compact = false,
+}: {
+  className?: string;
+  compact?: boolean;
+}) {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const iconClass = compact ? "size-4" : "size-5";
 
   useEffect(() => {
     setMounted(true);
@@ -19,10 +27,10 @@ export function ModeToggle({ className }: { className?: string }) {
         aria-hidden
         className={className}
         disabled
-        size="icon"
+        size={compact ? "icon-sm" : "icon"}
         variant="ghost"
       >
-        <Sun className="size-5 opacity-0" />
+        <Sun className={cn(iconClass, "opacity-0")} />
       </Button>
     );
   }
@@ -34,13 +42,13 @@ export function ModeToggle({ className }: { className?: string }) {
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       className={className}
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      size="icon"
+      size={compact ? "icon-sm" : "icon"}
       variant="ghost"
     >
       {isDark ? (
-        <Sun className="size-5 text-amber-400/90" />
+        <Sun className={cn(iconClass, "text-amber-400/90")} />
       ) : (
-        <Moon className="size-5 text-muted-foreground" />
+        <Moon className={cn(iconClass, "text-muted-foreground")} />
       )}
     </Button>
   );

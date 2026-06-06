@@ -1,7 +1,7 @@
 import "server-only";
 
 import { extractAllTextOutput, run, user as userMessage } from "@openai/agents";
-import { generateText, type ModelMessage, stepCountIs } from "ai";
+import { generateText, type ModelMessage } from "ai";
 import {
   type BookingAgentContext,
   buildBookingAgent,
@@ -20,12 +20,9 @@ import {
 } from "@/lib/agents/grooming-agent";
 import type { MemeAgentContext } from "@/lib/agents/meme-agent";
 import { memeAgent } from "@/lib/agents/meme-agent";
-import {
-  extractToolsFromAgentItems,
-  extractToolsFromGenerateText,
-} from "@/lib/agents/tool-trace";
+import { extractToolsFromAgentItems } from "@/lib/agents/tool-trace";
 import { buildVetAgent, type VetAgentContext } from "@/lib/agents/vet-agent";
-import { buildAssistantSystemPrompt, buildPetTools } from "@/lib/ai/pet-tools";
+import { buildGeneralOrchestratorPrompt } from "@/lib/ai/pet-tools";
 import { getModel, SYSTEM_PROMPT } from "@/lib/ai/providers";
 import type { BookingDraft } from "@/lib/booking/types";
 import type { ChatMessageData } from "@/lib/chat/types";
@@ -35,7 +32,6 @@ import {
   buildPetProfilePrompt,
   buildRecommendationContext,
   buildUserSettingsPrompt,
-  speciesToPetType,
 } from "@/lib/pet-data/format";
 import { postalToLatLng } from "@/lib/pet-data/search";
 import { getPetCareContext } from "@/lib/pet-queries";
@@ -113,14 +109,11 @@ export async function runGeneralAgent(args: {
   }
 
   const { pet, settings } = await getPetCareContext();
-  const system = buildAssistantSystemPrompt(
+  const system = buildGeneralOrchestratorPrompt(
     SYSTEM_PROMPT,
     buildPetProfilePrompt(pet),
     buildUserSettingsPrompt(settings),
   );
-  const petLatLng = pet?.locationPostalCode
-    ? postalToLatLng(pet.locationPostalCode)
-    : null;
 
   const history: ModelMessage[] = (args.history ?? [])
     .filter((m) => m.content?.trim())
@@ -132,15 +125,10 @@ export async function runGeneralAgent(args: {
       model: getModel(),
       system,
       messages: [...history, { role: "user", content: message }],
-      stopWhen: stepCountIs(5),
-      tools: buildPetTools({
-        defaultPetType: speciesToPetType(pet?.species),
-        petLatLng,
-      }),
     });
     return {
       assistantText: result.text || undefined,
-      toolsUsed: extractToolsFromGenerateText(result),
+      toolsUsed: ["plan"],
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Agent run failed";

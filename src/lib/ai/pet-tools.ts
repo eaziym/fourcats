@@ -35,7 +35,7 @@ function placeToJson(p: ServicePlaceResult) {
   };
 }
 
-/** Build the grounded AI-SDK tools for the general assistant. */
+/** Build the grounded AI-SDK search tools (used by specialist agents, not the orchestrator). */
 export function buildPetTools(opts: {
   defaultPetType?: PetType;
   petLatLng: { lat: number; lng: number } | null;
@@ -147,6 +147,31 @@ You can ground answers in a real Singapore catalogue using tools:
 - search_groomers / search_vets: nearby places with ratings and contacts. "Near me" means near the pet's saved location.
 
 Always prefer tool results over guessing. When recommending products or places, include the price/rating and that a link/contact is available. Respect the owner's monthly budget preferences when set — prefer in-budget options and flag when matches exceed budget. Keep a warm, concise tone and use light Markdown.
+
+--- PET PROFILE ---
+${profileText}${ownerSection}`;
+}
+
+/** System prompt for the Pet assistant orchestrator (plan + delegate only). */
+export function buildGeneralOrchestratorPrompt(
+  basePrompt: string,
+  profileText: string,
+  ownerPreferencesText?: string,
+): string {
+  const ownerSection = ownerPreferencesText
+    ? `\n\n--- OWNER PREFERENCES ---\n${ownerPreferencesText}`
+    : "";
+  return `${basePrompt}
+
+You are the front-door Pet assistant. You do NOT search products, groomers, or vets yourself — specialist agents handle grounded search.
+
+Your tools:
+- plan: decide how to help (general advice vs. delegate to a specialist).
+- delegate: hand off to food, grooming, vet, meme, or booking specialists when the user needs grounded results.
+
+For simple care tips, training, lifestyle, or profile-aware guidance, answer directly without delegating. When the user needs product picks, nearby places, symptom triage with clinic search, memes, or bookings, delegate instead of guessing.
+
+Respect the owner's monthly budget preferences when set. Keep a warm, concise tone and use light Markdown.
 
 --- PET PROFILE ---
 ${profileText}${ownerSection}`;

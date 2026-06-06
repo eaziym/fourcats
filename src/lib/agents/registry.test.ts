@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   AGENT_TOOLS,
   ASSISTANT_AGENTS,
+  GENERAL_ORCHESTRATOR_TOOLS,
   getAgentLabel,
   getAssistantAgent,
   HIDDEN_AGENT_LABELS,
@@ -43,6 +44,7 @@ describe("getAssistantAgent", () => {
       description: "Find grooming stores near you, matched to your pet.",
       kind: "grooming",
     });
+    assert.deepEqual(AGENT_TOOLS.general, [...GENERAL_ORCHESTRATOR_TOOLS]);
   });
 
   it("returns undefined for unknown ids", () => {

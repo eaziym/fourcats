@@ -6,7 +6,8 @@ export const ASSISTANT_AGENTS = [
   {
     id: "general",
     label: "Pet assistant",
-    description: "Health, grooming, and lifestyle Q&A for your pet.",
+    description:
+      "Plans your request and delegates to specialists — or answers simple care questions directly.",
     kind: "chat" as const,
   },
   {
@@ -40,9 +41,11 @@ export const ASSISTANT_AGENTS = [
 export type AssistantAgentId = (typeof ASSISTANT_AGENTS)[number]["id"];
 export type AssistantAgentKind = (typeof ASSISTANT_AGENTS)[number]["kind"];
 
+export const GENERAL_ORCHESTRATOR_TOOLS = ["plan", "delegate"] as const;
+
 /** Tools each agent may call — shown in the agents catalog. */
 export const AGENT_TOOLS: Record<string, string[]> = {
-  general: ["search_food", "search_groomers", "search_vets"],
+  general: [...GENERAL_ORCHESTRATOR_TOOLS],
   food: ["search_food"],
   grooming: ["search_groomers"],
   vet: ["search_vets"],

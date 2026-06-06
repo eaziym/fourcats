@@ -4,8 +4,8 @@ export function buildMailtoUrl(
   subject: string,
   body: string,
 ): string {
-  const params = new URLSearchParams();
-  params.set("subject", subject);
-  params.set("body", body);
-  return `mailto:${encodeURIComponent(to.trim())}?${params.toString()}`;
+  const encodedTo = encodeURIComponent(to.trim());
+  const encodedSubject = encodeURIComponent(subject);
+  const encodedBody = encodeURIComponent(body);
+  return `mailto:${encodedTo}?subject=${encodedSubject}&body=${encodedBody}`;
 }

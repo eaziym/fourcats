@@ -1,7 +1,8 @@
 "use client";
 
 import { ImagePlus, MapPin, Send, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import {
   ChatMessageView,
   PendingMessage,
@@ -82,8 +83,12 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
-export default function AssistantPage() {
+let autoSendInFlight: string | null = null;
+
+function AssistantPageInner() {
   const { pet } = usePetCare();
+  const searchParams = useSearchParams();
+  const bootstrappedRef = useRef(false);
 
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -108,20 +113,208 @@ export default function AssistantPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const q = params.get("q")?.trim();
-    if (!q) return;
-    setInput(q);
-    window.history.replaceState(null, "", "/assistant");
-  }, []);
+  const executeSend = useCallback(
+    async (
+      text: string,
+      opts: {
+        sid: string;
+        priorMessages: ChatMessageDTO[];
+        attached?: File | null;
+        coords?: { lat: number; lng: number } | null;
+      },
+    ) => {
+      const trimmed = text.trim();
+      const attached = opts.attached ?? null;
+      const sendCoords = opts.coords ?? null;
+      if (!trimmed && !attached) return;
+
+      setError(null);
+
+      let previewDataUrl: string | undefined;
+      if (attached) {
+        try {
+          previewDataUrl = await readAsDataUrl(attached);
+        } catch {
+          previewDataUrl = undefined;
+        }
+      }
+
+      const now = Date.now();
+      const userMsg: ChatMessageDTO = {
+        id: `u-${now}`,
+        role: "user",
+        agentId: "user",
+        content: trimmed,
+        data: previewDataUrl ? { imageUrl: previewDataUrl } : null,
+        createdAt: new Date(now).toISOString(),
+      };
+
+      const history = opts.priorMessages
+        .filter((m) => m.content.trim())
+        .map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        }));
+
+      const recentPlaces = extractRecentPlaces([
+        ...opts.priorMessages,
+        userMsg,
+      ]);
+
+      setMessages((prev) => [...prev, userMsg]);
+      setInput("");
+      setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+
+      setBusy(true);
+      setPendingSteps([
+        {
+          agentId: "general",
+          label: getAgentLabel("general") ?? "Pet assistant",
+          status: "running",
+          reasoning: "Analyzing your request…",
+          tools: ["plan"],
+        },
+      ]);
+
+      try {
+        const fd = new FormData();
+        fd.set("message", trimmed);
+        fd.set("history", JSON.stringify(history));
+        fd.set("recentPlaces", JSON.stringify(recentPlaces));
+        if (attached) fd.set("image", attached);
+        if (sendCoords) {
+          fd.set("lat", String(sendCoords.lat));
+          fd.set("lng", String(sendCoords.lng));
+        }
+
+        const res = await fetch("/api/agents/orchestrate", {
+          method: "POST",
+          body: fd,
+        });
+        const data = (await res.json()) as {
+          steps?: DelegationStepDTO[];
+          messages?: {
+            agentId: string;
+            content: string;
+            data?: ChatMessageData | null;
+          }[];
+          error?: string;
+        };
+
+        if (!res.ok) {
+          throw new Error(data.error || `Request failed (${res.status})`);
+        }
+
+        const assistantMsgs: ChatMessageDTO[] = (data.messages ?? []).map(
+          (m, i) => ({
+            id: `a-${m.agentId}-${Date.now()}-${i}`,
+            role: "assistant" as const,
+            agentId: m.agentId,
+            content: m.content,
+            data: m.data ?? null,
+            createdAt: new Date().toISOString(),
+          }),
+        );
+
+        setPendingSteps(null);
+        setMessages((prev) => [...prev, ...assistantMsgs]);
+
+        await appendChatMessages(opts.sid, [
+          {
+            role: "user",
+            agentId: "user",
+            content: trimmed,
+            data: userMsg.data,
+          },
+          ...assistantMsgs.map((m) => ({
+            role: m.role,
+            agentId: m.agentId,
+            content: m.content,
+            data: m.data,
+          })),
+        ]);
+        const list = await listChatSessions();
+        setSessions(list);
+      } catch (err) {
+        setPendingSteps(null);
+        const msg =
+          err instanceof Error ? err.message : "Something went wrong.";
+        setError(msg);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
+    const q = searchParams.get("q")?.trim();
+    const auto = searchParams.get("auto") === "1";
+    if (!q || !auto) return;
+
+    const dedupeKey = `${q}::${searchParams.get("t") ?? "0"}`;
+    if (autoSendInFlight === dedupeKey) return;
+    autoSendInFlight = dedupeKey;
+    bootstrappedRef.current = true;
+
     let active = true;
-    (async () => {
+    window.history.replaceState(null, "", "/assistant");
+
+    void (async () => {
+      try {
+        setLoadingSession(true);
+        setError(null);
+
+        const s = await createChatSession();
+        if (!active) return;
+        if (!s) {
+          setError("Couldn't start a chat. Please sign in again.");
+          setLoadingSession(false);
+          return;
+        }
+
+        const list = await listChatSessions();
+        if (!active) return;
+
+        setSessions([s, ...list.filter((item) => item.id !== s.id)]);
+        setSessionId(s.id);
+        setMessages([]);
+        setLoadingSession(false);
+
+        await executeSend(q, { sid: s.id, priorMessages: [] });
+      } finally {
+        if (autoSendInFlight === dedupeKey) {
+          autoSendInFlight = null;
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [searchParams, executeSend]);
+
+  useEffect(() => {
+    if (bootstrappedRef.current) return;
+
+    const q = searchParams.get("q")?.trim();
+    const auto = searchParams.get("auto") === "1";
+    if (q && auto) return;
+
+    bootstrappedRef.current = true;
+    let active = true;
+
+    void (async () => {
       const list = await listChatSessions();
       if (!active) return;
       setSessions(list);
+
+      if (q) {
+        window.history.replaceState(null, "", "/assistant");
+        setInput(q);
+      }
+
       if (list.length > 0) {
         setLoadingSession(true);
         setSessionId(list[0].id);
@@ -132,10 +325,11 @@ export default function AssistantPage() {
         }
       }
     })();
+
     return () => {
       active = false;
     };
-  }, []);
+  }, [searchParams]);
 
   const scrollKey = `${messages.length}-${pendingSteps?.length ?? 0}-${bookingPending}-${sessionId}`;
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll when transcript changes
@@ -248,6 +442,7 @@ export default function AssistantPage() {
             label: getAgentLabel("general") ?? "Pet assistant",
             status: "done",
             reasoning: "Booking request detected — delegating to booking.",
+            tools: ["plan", "delegate"],
           },
           {
             agentId: "booking",
@@ -322,9 +517,8 @@ export default function AssistantPage() {
     const attached = file;
     if (!text && !attached) return;
 
-    setError(null);
-
     let sid = sessionId;
+    let priorMessages = messages;
     if (!sid) {
       const s = await createChatSession();
       if (!s) {
@@ -334,117 +528,15 @@ export default function AssistantPage() {
       setSessions((prev) => [s, ...prev]);
       setSessionId(s.id);
       sid = s.id;
+      priorMessages = [];
     }
 
-    let previewDataUrl: string | undefined;
-    if (attached) {
-      try {
-        previewDataUrl = await readAsDataUrl(attached);
-      } catch {
-        previewDataUrl = undefined;
-      }
-    }
-
-    const now = Date.now();
-    const userMsg: ChatMessageDTO = {
-      id: `u-${now}`,
-      role: "user",
-      agentId: "user",
-      content: text,
-      data: previewDataUrl ? { imageUrl: previewDataUrl } : null,
-      createdAt: new Date(now).toISOString(),
-    };
-
-    const history = messages
-      .filter((m) => m.content.trim())
-      .map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      }));
-
-    const recentPlaces = extractRecentPlaces([...messages, userMsg]);
-
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
-    setFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-
-    setBusy(true);
-    setPendingSteps([
-      {
-        agentId: "general",
-        label: getAgentLabel("general") ?? "Pet assistant",
-        status: "running",
-        reasoning: "Analyzing your request…",
-      },
-    ]);
-
-    try {
-      const fd = new FormData();
-      fd.set("message", text);
-      fd.set("history", JSON.stringify(history));
-      fd.set("recentPlaces", JSON.stringify(recentPlaces));
-      if (attached) fd.set("image", attached);
-      if (coords) {
-        fd.set("lat", String(coords.lat));
-        fd.set("lng", String(coords.lng));
-      }
-
-      const res = await fetch("/api/agents/orchestrate", {
-        method: "POST",
-        body: fd,
-      });
-      const data = (await res.json()) as {
-        steps?: DelegationStepDTO[];
-        messages?: {
-          agentId: string;
-          content: string;
-          data?: ChatMessageData | null;
-        }[];
-        error?: string;
-      };
-
-      if (!res.ok) {
-        throw new Error(data.error || `Request failed (${res.status})`);
-      }
-
-      const assistantMsgs: ChatMessageDTO[] = (data.messages ?? []).map(
-        (m, i) => ({
-          id: `a-${m.agentId}-${Date.now()}-${i}`,
-          role: "assistant" as const,
-          agentId: m.agentId,
-          content: m.content,
-          data: m.data ?? null,
-          createdAt: new Date().toISOString(),
-        }),
-      );
-
-      setPendingSteps(null);
-      setMessages((prev) => [...prev, ...assistantMsgs]);
-
-      await appendChatMessages(sid, [
-        {
-          role: "user",
-          agentId: "user",
-          content: text,
-          data: userMsg.data,
-        },
-        ...assistantMsgs.map((m) => ({
-          role: m.role,
-          agentId: m.agentId,
-          content: m.content,
-          data: m.data,
-        })),
-      ]);
-      const list = await listChatSessions();
-      setSessions(list);
-    } catch (err) {
-      setPendingSteps(null);
-      const msg = err instanceof Error ? err.message : "Something went wrong.";
-      setError(msg);
-    } finally {
-      setBusy(false);
-    }
+    await executeSend(text, {
+      sid,
+      priorMessages,
+      attached,
+      coords,
+    });
   }
 
   const isEmpty = messages.length === 0 && !pendingSteps && !bookingPending;
@@ -624,5 +716,21 @@ export default function AssistantPage() {
         <ContextSidebar />
       </main>
     </PetCareShell>
+  );
+}
+
+export default function AssistantPage() {
+  return (
+    <Suspense
+      fallback={
+        <PetCareShell active="assistant" lockViewport>
+          <main className="flex min-h-0 flex-1 items-center justify-center bg-background">
+            <p className="text-sm text-muted-foreground">Loading assistant…</p>
+          </main>
+        </PetCareShell>
+      }
+    >
+      <AssistantPageInner />
+    </Suspense>
   );
 }

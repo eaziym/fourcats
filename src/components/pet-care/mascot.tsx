@@ -280,6 +280,16 @@ export function Paw({
 }
 
 /** Brand mascot (species `brand`), floating — used in the sidebar/header. */
-export function BrandMascot({ size = 42 }: { size?: number }) {
-  return <Mascot species="brand" size={size} float />;
+export function BrandMascot({
+  size = 42,
+  className,
+  float = true,
+}: {
+  size?: number;
+  className?: string;
+  float?: boolean;
+}) {
+  return (
+    <Mascot className={className} float={float} size={size} species="brand" />
+  );
 }
