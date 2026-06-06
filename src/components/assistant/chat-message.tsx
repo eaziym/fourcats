@@ -170,76 +170,70 @@ function UserAvatar() {
   );
 }
 
-export function ChatMessageView({
+export function UserMessageView({ message }: { message: ChatMessageDTO }) {
+  const data = message.data ?? undefined;
+
+  return (
+    <div className="ml-auto flex max-w-[min(100%,42rem)] flex-row-reverse items-start gap-3">
+      <UserAvatar />
+      <div className="min-w-0 space-y-3 rounded-2xl rounded-tr-md bg-gradient-to-br from-[#ffd9dd] to-[#ffb2bd] p-4 text-base leading-relaxed text-[#400013] shadow-[0_4px_15px_rgba(156,63,83,0.15)] dark:from-primary/25 dark:to-primary/40 dark:text-primary-foreground">
+        {data?.imageUrl ? (
+          <Image
+            alt="Your pet"
+            className="max-h-64 w-full max-w-xs rounded-lg border border-white/40 object-contain"
+            height={400}
+            src={data.imageUrl}
+            unoptimized
+            width={400}
+          />
+        ) : null}
+        {message.content ? <Markdown>{message.content}</Markdown> : null}
+      </div>
+    </div>
+  );
+}
+
+export function AssistantMessageContent({
   message,
   onBookPlace,
   bookingPlaceId,
+  showAgentBadge = true,
 }: {
   message: ChatMessageDTO;
   onBookPlace?: (placeId: string, placeName: string) => void;
   bookingPlaceId?: string | null;
+  showAgentBadge?: boolean;
 }) {
   const data = message.data ?? undefined;
-
-  if (message.role === "user") {
-    return (
-      <div className="ml-auto flex max-w-[min(100%,42rem)] flex-row-reverse items-start gap-3">
-        <UserAvatar />
-        <div className="min-w-0 space-y-3 rounded-2xl rounded-tr-md bg-gradient-to-br from-[#ffd9dd] to-[#ffb2bd] p-4 text-base leading-relaxed text-[#400013] shadow-[0_4px_15px_rgba(156,63,83,0.15)] dark:from-primary/25 dark:to-primary/40 dark:text-primary-foreground">
-          {data?.imageUrl ? (
-            <Image
-              alt="Your pet"
-              className="max-h-64 w-full max-w-xs rounded-lg border border-white/40 object-contain"
-              height={400}
-              src={data.imageUrl}
-              unoptimized
-              width={400}
-            />
-          ) : null}
-          {message.content ? <Markdown>{message.content}</Markdown> : null}
-        </div>
-      </div>
-    );
-  }
-
   const agentLabel = getAgentLabel(message.agentId);
-  const delegationSteps = data?.delegationSteps;
 
   return (
-    <div className="flex max-w-[min(100%,46rem)] flex-col gap-3">
-      {delegationSteps && delegationSteps.length > 0 ? (
-        <DelegationActivity steps={delegationSteps} />
-      ) : null}
-      <div className="flex items-start gap-3">
-        <AssistantAvatar />
-        <div
-          className={`min-w-0 space-y-3 rounded-2xl rounded-tl-md border p-4 text-base leading-relaxed shadow-[0_4px_20px_rgba(29,53,87,0.05)] backdrop-blur-md ${
-            data?.isError
-              ? "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
-              : "border-white/60 bg-white/85 text-foreground dark:border-white/10 dark:bg-card/90"
-          }`}
-        >
-          {agentLabel ? (
-            <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
-              {agentLabel}
-            </span>
-          ) : null}
-          {message.content ? <Markdown>{message.content}</Markdown> : null}
-          {data?.imageUrl ? (
-            <Image
-              alt="Generated meme"
-              className="max-h-[min(70vh,520px)] w-full max-w-md rounded-xl border border-[#dac0c3]/30 object-contain"
-              height={512}
-              src={data.imageUrl}
-              unoptimized
-              width={512}
-            />
-          ) : null}
-        </div>
+    <div className="space-y-3">
+      <div
+        className={`min-w-0 space-y-3 text-base leading-relaxed ${
+          data?.isError ? "text-amber-900 dark:text-amber-200" : "text-foreground"
+        }`}
+      >
+        {showAgentBadge && agentLabel ? (
+          <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+            {agentLabel}
+          </span>
+        ) : null}
+        {message.content ? <Markdown>{message.content}</Markdown> : null}
+        {data?.imageUrl ? (
+          <Image
+            alt="Generated meme"
+            className="max-h-[min(55vh,480px)] w-full max-w-md rounded-xl border border-[#dac0c3]/30 object-contain"
+            height={512}
+            src={data.imageUrl}
+            unoptimized
+            width={512}
+          />
+        ) : null}
       </div>
 
       {data?.products && data.products.length > 0 ? (
-        <div className="ml-11 grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           {data.products.map((p) => (
             <ProductCard key={p.id} product={p} />
           ))}
@@ -247,7 +241,7 @@ export function ChatMessageView({
       ) : null}
 
       {data?.places && data.places.length > 0 ? (
-        <div className="ml-11 w-full max-w-xl">
+        <div className="w-full max-w-xl">
           <PlacesMap
             bookingPlaceId={bookingPlaceId}
             onBookPlace={onBookPlace}
@@ -258,10 +252,52 @@ export function ChatMessageView({
       ) : null}
 
       {data?.bookingDraft ? (
-        <div className="ml-11 max-w-md">
+        <div className="max-w-md">
           <BookingDraftCard draft={data.bookingDraft} />
         </div>
       ) : null}
+    </div>
+  );
+}
+
+export function ChatMessageView({
+  message,
+  onBookPlace,
+  bookingPlaceId,
+}: {
+  message: ChatMessageDTO;
+  onBookPlace?: (placeId: string, placeName: string) => void;
+  bookingPlaceId?: string | null;
+}) {
+  if (message.role === "user") {
+    return <UserMessageView message={message} />;
+  }
+
+  const data = message.data ?? undefined;
+  const delegationSteps = data?.delegationSteps;
+
+  return (
+    <div className="flex max-w-[min(100%,46rem)] flex-col gap-3">
+      {delegationSteps && delegationSteps.length > 0 ? (
+        <DelegationActivity steps={delegationSteps} />
+      ) : null}
+      <div className="flex items-start gap-3">
+        <AssistantAvatar />
+        <div
+          className={`min-w-0 flex-1 space-y-3 rounded-2xl rounded-tl-md border p-4 text-base leading-relaxed shadow-[0_4px_20px_rgba(29,53,87,0.05)] backdrop-blur-md ${
+            data?.isError
+              ? "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
+              : "border-white/60 bg-white/85 text-foreground dark:border-white/10 dark:bg-card/90"
+          }`}
+        >
+          <AssistantMessageContent
+            bookingPlaceId={bookingPlaceId}
+            message={message}
+            onBookPlace={onBookPlace}
+            showAgentBadge
+          />
+        </div>
+      </div>
     </div>
   );
 }

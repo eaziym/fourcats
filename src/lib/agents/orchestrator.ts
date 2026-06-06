@@ -3,6 +3,12 @@ import "server-only";
 import { generateObject } from "ai";
 import { z } from "zod";
 import {
+  messageForSpecialist,
+  normalizeAgentTasks,
+  type SpecialistAgentId,
+  SPECIALIST_IDS,
+} from "@/lib/agents/agent-tasks";
+import {
   agentResultToMessageContent,
   runBookingAgent,
   runFoodAgent,
@@ -20,9 +26,8 @@ import type { ChatMessageData, DelegationStepDTO } from "@/lib/chat/types";
 import { buildPetProfilePrompt } from "@/lib/pet-data/format";
 import { getPetCareContext } from "@/lib/pet-queries";
 
-const SPECIALIST_IDS = ["food", "grooming", "vet", "meme", "booking"] as const;
-
-export type SpecialistAgentId = (typeof SPECIALIST_IDS)[number];
+export type { SpecialistAgentId } from "@/lib/agents/agent-tasks";
+export { SPECIALIST_IDS } from "@/lib/agents/agent-tasks";
 
 export type OrchestrationMessage = {
   agentId: string;
@@ -106,7 +111,11 @@ async function routeToSpecialists(args: {
   hasImage: boolean;
   recentPlacesCount: number;
   petSummary: string;
-}): Promise<{ agents: SpecialistAgentId[]; reasoning: string }> {
+}): Promise<{
+  agents: SpecialistAgentId[];
+  reasoning: string;
+  tasks: { agentId: SpecialistAgentId; task: string }[];
+}> {
   try {
     const { object } = await generateObject({
       model: getModel(),
@@ -115,6 +124,20 @@ async function routeToSpecialists(args: {
         reasoning: z
           .string()
           .describe("One short sentence explaining the routing choice."),
+        tasks: z
+          .array(
+            z.object({
+              agentId: z.enum(SPECIALIST_IDS),
+              task: z
+                .string()
+                .describe(
+                  "Focused slice of the user request for this agent only — no other domains.",
+                ),
+            }),
+          )
+          .describe(
+            "One entry per selected agent with a domain-specific task. Do not copy the full message to every agent.",
+          ),
       }),
       system: `You route user requests for a Singapore pet-care assistant. Pick zero or more specialist agents:
 - food: diet, nutrition, product recommendations
@@ -127,7 +150,8 @@ Rules:
 - Prefer zero specialists for simple general care tips — those stay with the general assistant only.
 - Pick multiple specialists only when the request clearly spans domains.
 - Never pick meme without an attached photo.
-- Pick booking when booking intent is clear and there is place context or a named place.`,
+- Pick booking when booking intent is clear and there is place context or a named place.
+- When you pick multiple agents, write a separate focused \`task\` for each — extract ONLY what that agent should handle. Never assign the full multi-topic message verbatim to every agent.`,
       prompt: `User message: ${args.message}
 Photo attached: ${args.hasImage}
 Recent places in chat: ${args.recentPlacesCount}
@@ -139,7 +163,9 @@ Pet: ${args.petSummary}`,
       agents = agents.filter((id) => id !== "meme");
     }
 
-    return { agents, reasoning: object.reasoning };
+    const tasks = object.tasks.filter((entry) => agents.includes(entry.agentId));
+
+    return { agents, reasoning: object.reasoning, tasks };
   } catch {
     const agents = routeWithHeuristics(args);
     return {
@@ -148,6 +174,7 @@ Pet: ${args.petSummary}`,
         agents.length > 0
           ? "Matched your request to specialist agents."
           : "Handling this with general pet-care guidance.",
+      tasks: [],
     };
   }
 }
@@ -232,12 +259,15 @@ export async function orchestrateAssistantRequest(
   const recentPlaces = args.recentPlaces ?? [];
   const hasImage = Boolean(imageBytes);
 
-  const { agents, reasoning } = await routeToSpecialists({
+  const { agents, reasoning, tasks } = await routeToSpecialists({
     message: message || "Help with my pet.",
     hasImage,
     recentPlacesCount: recentPlaces.length,
     petSummary,
   });
+
+  const multiAgent = agents.length > 1;
+  const taskByAgent = normalizeAgentTasks(agents, tasks, message);
 
   const steps: DelegationStepDTO[] = [
     {
@@ -294,7 +324,12 @@ export async function orchestrateAssistantRequest(
   const results = await Promise.all(
     agents.map(async (agentId, index) => {
       const result = await runSpecialist(agentId, {
-        message,
+        message: messageForSpecialist(
+          agentId,
+          message,
+          taskByAgent.get(agentId) ?? message,
+          multiAgent,
+        ),
         imageBlob: imageBlobForAgent(),
         lat: args.lat,
         lng: args.lng,

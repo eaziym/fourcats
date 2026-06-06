@@ -2,9 +2,9 @@
 
 import { ImagePlus, MapPin, Send, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChatTurnView } from "@/components/assistant/chat-turn-view";
 import {
-  ChatMessageView,
   AssistantLoadingPane,
   PendingMessage,
 } from "@/components/assistant/chat-message";
@@ -21,6 +21,7 @@ import type {
   DelegationStepDTO,
 } from "@/lib/chat/types";
 import { cn } from "@/lib/utils";
+import { groupChatTurns } from "@/lib/chat/group-turns";
 import {
   appendChatMessages,
   createChatSession,
@@ -768,6 +769,7 @@ function AssistantPageInner() {
   }
 
   const isEmpty = messages.length === 0 && !pendingSteps && !bookingPending;
+  const chatTurns = useMemo(() => groupChatTurns(messages), [messages]);
 
   return (
     <PetCareShell active="assistant" lockViewport>
@@ -805,12 +807,16 @@ function AssistantPageInner() {
                 </div>
               ) : (
                 <>
-                  {messages.map((m) => (
-                    <ChatMessageView
+                  {chatTurns.map((turn, index) => (
+                    <ChatTurnView
                       bookingPlaceId={bookingPlaceId}
-                      key={m.id}
-                      message={m}
+                      key={
+                        turn.user?.id ??
+                        turn.assistants.map((m) => m.id).join("-") ??
+                        `turn-${index}`
+                      }
                       onBookPlace={handleBookPlace}
+                      turn={turn}
                     />
                   ))}
                   {pendingSteps ? (
