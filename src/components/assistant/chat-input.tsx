@@ -10,14 +10,13 @@ export function ChatInput({
 }: {
   input: string;
   busy: boolean;
-  petName: string;
+  petName?: string;
   onInputChange: (value: string) => void;
   onSubmit: (e: React.FormEvent) => void;
 }) {
-  const placeholder =
-    petName === "your pet"
-      ? "Ask about your pet's health, diet, or local services..."
-      : `Ask about ${petName}'s health, diet, or local services...`;
+  const placeholder = petName
+    ? `Ask about ${petName}'s health, diet, or local services...`
+    : "Ask about your pet's health, diet, or local services...";
 
   return (
     <div className="border-t border-[#dac0c3]/30 bg-gradient-to-t from-background via-background to-transparent p-5 md:px-10">
@@ -33,7 +32,7 @@ export function ChatInput({
           value={input}
           onChange={(e) => onInputChange(e.target.value)}
           placeholder={placeholder}
-          className="min-w-0 flex-1 bg-transparent py-3 text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
+          className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none"
           disabled={busy}
         />
         <Button

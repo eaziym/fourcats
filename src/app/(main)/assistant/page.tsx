@@ -4,23 +4,31 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AgentSelector } from "@/components/assistant/agent-selector";
-import { ChatBubble, LoadingBubble } from "@/components/assistant/chat-bubble";
 import { ChatInput, MemeChatInput } from "@/components/assistant/chat-input";
 import { ContextSidebar } from "@/components/assistant/context-sidebar";
+import { GeneralChat } from "@/components/assistant/general-chat";
+import { MemeChat, type MemeMessage } from "@/components/assistant/meme-chat";
 import { usePetCare } from "@/components/pet-care/pet-care-provider";
 import { PetCareShell } from "@/components/pet-care/shell";
 import type { AssistantAgentId } from "@/lib/agents/registry";
-import { buildAssistantWelcome } from "@/lib/assistant-pet-copy";
+import type { PetDTO } from "@/lib/pet-queries";
+
+function buildAssistantWelcome(pet: PetDTO | null): string {
+  if (!pet) {
+    return "Hi there! I'm ready to help with grooming, health, or lifestyle questions for your pet in Singapore.";
+  }
+  const kind =
+    pet.breed?.trim() ||
+    (pet.species.toLowerCase() === "dog"
+      ? "dog"
+      : pet.species.toLowerCase() === "cat"
+        ? "cat"
+        : pet.species);
+  return `Hi there! How is ${pet.name} doing today? I'm ready to help with any grooming, health, or lifestyle questions you have for your ${kind}.`;
+}
 
 const MEME_WELCOME =
   "I'm the Meme agent. Upload a photo of your pet, add an optional caption or vibe, and I'll generate a meme image using OpenAI image editing.";
-
-type MemeMessage = {
-  id: string;
-  role: "user" | "assistant";
-  text: string;
-  imageUrl?: string;
-};
 
 export default function AssistantPage() {
   const { pet } = usePetCare();
@@ -57,7 +65,6 @@ export default function AssistantPage() {
   });
 
   const busy = status === "streaming" || status === "submitted";
-  const chatPlaceholderPet = pet?.name ?? "your pet";
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const lastScrollKey =
@@ -149,7 +156,7 @@ export default function AssistantPage() {
   return (
     <PetCareShell active="assistant">
       <main className="grid min-h-0 flex-1 bg-background lg:grid-cols-[1fr_320px]">
-        <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[radial-gradient(#dac0c3_1px,transparent_1px)] [background-size:34px_34px]">
+        <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[radial-gradient(var(--color-border)_1px,transparent_1px)] bg-size-[34px_34px]">
           <div className="mx-auto mt-4 flex w-full max-w-4xl flex-col items-center gap-3 px-4 sm:flex-row sm:justify-center">
             <AgentSelector agentId={agentId} onAgentChange={setAgentId} />
           </div>
@@ -166,47 +173,14 @@ export default function AssistantPage() {
               </div>
 
               {agentId === "general" ? (
-                <div className="flex flex-col gap-6">
-                  {messages.map((msg) => (
-                    <ChatBubble
-                      key={msg.id}
-                      speaker={msg.role}
-                      content={
-                        msg.parts
-                          ?.filter((p) => p.type === "text")
-                          .map((p) => p.text)
-                          .join("") || msg.content
-                      }
-                    />
-                  ))}
-                  {busy && messages.at(-1)?.role !== "assistant" && (
-                    <LoadingBubble />
-                  )}
-                  {error ? (
-                    <div className="mx-auto max-w-2xl rounded-xl border border-destructive/30 bg-destructive/10 px-5 py-3 text-sm text-destructive">
-                      {error.message ||
-                        "Something went wrong. Please try again."}
-                    </div>
-                  ) : null}
-                </div>
+                <GeneralChat messages={messages} busy={busy} error={error} />
               ) : (
-                <div className="flex flex-col gap-6">
-                  <ChatBubble speaker="assistant" content={MEME_WELCOME} />
-                  {memeMessages.map((msg) => (
-                    <ChatBubble
-                      key={msg.id}
-                      speaker={msg.role}
-                      content={msg.text}
-                      imageUrl={msg.imageUrl}
-                    />
-                  ))}
-                  {memeBusy ? <LoadingBubble /> : null}
-                  {memeError && !memeBusy ? (
-                    <div className="mx-auto max-w-2xl rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                      {memeError}
-                    </div>
-                  ) : null}
-                </div>
+                <MemeChat
+                  messages={memeMessages}
+                  busy={memeBusy}
+                  error={memeError}
+                  welcomeText={MEME_WELCOME}
+                />
               )}
             </div>
           </div>
@@ -215,7 +189,7 @@ export default function AssistantPage() {
             <ChatInput
               input={input}
               busy={busy}
-              petName={chatPlaceholderPet}
+              petName={pet?.name}
               onInputChange={setInput}
               onSubmit={handleSubmit}
             />
@@ -234,6 +208,6 @@ export default function AssistantPage() {
 
         <ContextSidebar activeAgentId={agentId} />
       </main>
-    </PetCareShell>
+    </PetCareShell >
   );
 }
