@@ -5,24 +5,20 @@ import { getSupabasePublishableKey, getSupabaseUrl } from "@/lib/supabase/env";
 export async function createClient() {
   const cookieStore = await cookies();
 
-  return createServerClient(
-    getSupabaseUrl(),
-    getSupabasePublishableKey(),
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            for (const { name, value, options } of cookiesToSet) {
-              cookieStore.set(name, value, options);
-            }
-          } catch {
-            // Called from a Server Component; ignore if middleware already refreshed the session.
+  return createServerClient(getSupabaseUrl(), getSupabasePublishableKey(), {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet) {
+        try {
+          for (const { name, value, options } of cookiesToSet) {
+            cookieStore.set(name, value, options);
           }
-        },
+        } catch {
+          // Called from a Server Component; ignore if middleware already refreshed the session.
+        }
       },
     },
-  );
+  });
 }

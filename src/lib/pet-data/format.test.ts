@@ -46,6 +46,8 @@ describe("petTypeLabel", () => {
 
   it("preserves unknown values and ignores empty values", () => {
     assert.equal(petTypeLabel("ferret"), "ferret");
+    assert.equal(petTypeLabel(" Ferret "), "Ferret");
+    assert.equal(petTypeLabel("   "), null);
     assert.equal(petTypeLabel(null), null);
     assert.equal(petTypeLabel(undefined), null);
   });
@@ -54,12 +56,13 @@ describe("petTypeLabel", () => {
 describe("speciesToPetType", () => {
   it("maps supported app species to pet data filters", () => {
     assert.equal(speciesToPetType("dog"), "dog");
-    assert.equal(speciesToPetType("Cat"), "cat");
+    assert.equal(speciesToPetType(" Cat "), "cat");
     assert.equal(speciesToPetType("small_pet"), "rabbit");
   });
 
   it("returns undefined for unsupported or missing species", () => {
     assert.equal(speciesToPetType("hamster"), undefined);
+    assert.equal(speciesToPetType("  "), undefined);
     assert.equal(speciesToPetType(null), undefined);
   });
 });
@@ -72,20 +75,18 @@ describe("buildPetProfilePrompt", () => {
   it("builds a compact prompt with known pet details", () => {
     const prompt = buildPetProfilePrompt({
       id: "pet-1",
-      userId: "user-1",
       name: "Mochi",
       species: "Cat",
       breed: " Ragdoll ",
-      ageYears: 4,
-      weightKg: 5.2,
+      photoUrl: null,
+      ageYears: "4",
+      weightKg: "5.2",
       medicalConditions: ["sensitive stomach"],
       dietaryRestrictions: ["grain-free"],
       locationLabel: "Tiong Bahru",
       locationPostalCode: "160001",
-      photoPath: null,
-      photoUrl: null,
-      createdAt: new Date("2026-01-01T00:00:00.000Z"),
-      updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+      notes: null,
+      careLogs: [],
     });
 
     assert.equal(
@@ -99,6 +100,35 @@ describe("buildPetProfilePrompt", () => {
         "Medical conditions: sensitive stomach",
         "Dietary restrictions: grain-free",
         "Location: Tiong Bahru",
+      ].join("\n"),
+    );
+  });
+
+  it("uses postal code as the location fallback and labels empty arrays", () => {
+    const prompt = buildPetProfilePrompt({
+      id: "pet-1",
+      name: "Biscuit",
+      species: "dog",
+      breed: " ",
+      photoUrl: null,
+      ageYears: null,
+      weightKg: null,
+      medicalConditions: [],
+      dietaryRestrictions: [],
+      locationLabel: " ",
+      locationPostalCode: "560123",
+      notes: null,
+      careLogs: [],
+    });
+
+    assert.equal(
+      prompt,
+      [
+        "Name: Biscuit",
+        "Species: dog",
+        "Medical conditions: none on file",
+        "Dietary restrictions: none on file",
+        "Location: 560123",
       ].join("\n"),
     );
   });

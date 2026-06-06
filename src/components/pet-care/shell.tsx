@@ -5,15 +5,19 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useResizableSidebar } from "@/hooks/use-resizable-sidebar";
+import { cn } from "@/lib/utils";
 import { AppSidebar, SidebarContent } from "./app-sidebar";
 import { AppTopBar } from "./app-top-bar";
 
 export function PetCareShell({
   active,
   children,
+  lockViewport = false,
 }: {
   active: string;
   children: React.ReactNode;
+  /** Lock the shell to the viewport height so only inner panes scroll. */
+  lockViewport?: boolean;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { width: sidebarWidth, onGripMouseDown } = useResizableSidebar(248, {
@@ -23,7 +27,10 @@ export function PetCareShell({
 
   return (
     <div
-      className="min-h-screen bg-background text-foreground"
+      className={cn(
+        "bg-background text-foreground",
+        lockViewport ? "h-dvh overflow-hidden" : "min-h-screen",
+      )}
       style={
         {
           "--app-sidebar-width": `${sidebarWidth}px`,
@@ -59,7 +66,12 @@ export function PetCareShell({
         </SheetContent>
       </Sheet>
 
-      <div className="flex min-h-screen flex-col pl-0 md:pl-[var(--app-sidebar-width)]">
+      <div
+        className={cn(
+          "flex flex-col pl-0 md:pl-[var(--app-sidebar-width)]",
+          lockViewport ? "h-dvh overflow-hidden" : "min-h-screen",
+        )}
+      >
         <AppTopBar />
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
       </div>

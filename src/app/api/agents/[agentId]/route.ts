@@ -1,15 +1,24 @@
 import { extractAllTextOutput, run, user as userMessage } from "@openai/agents";
+import { generateText, type ModelMessage, stepCountIs } from "ai";
 import { NextResponse } from "next/server";
 import {
   buildFoodAgent,
   type FoodAgentContext,
   type FoodProduct,
 } from "@/lib/agents/food-agent";
+import {
+  buildGroomingAgent,
+  type GroomingAgentContext,
+  type ServicePlaceCard,
+} from "@/lib/agents/grooming-agent";
 import type { MemeAgentContext } from "@/lib/agents/meme-agent";
 import { memeAgent } from "@/lib/agents/meme-agent";
+import { buildAssistantSystemPrompt, buildPetTools } from "@/lib/ai/pet-tools";
+import { getModel, SYSTEM_PROMPT } from "@/lib/ai/providers";
 import { getUser } from "@/lib/auth/server";
 import { downscaleForVisionPreview } from "@/lib/image/downscale-for-vision";
-import { buildPetProfilePrompt } from "@/lib/pet-data/format";
+import { buildPetProfilePrompt, speciesToPetType } from "@/lib/pet-data/format";
+import { postalToLatLng } from "@/lib/pet-data/search";
 import { getPetCareContext } from "@/lib/pet-queries";
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
@@ -55,8 +64,16 @@ export async function POST(
 
   const { agentId } = await context.params;
 
+  if (agentId === "general") {
+    return handleGeneralAgent(req);
+  }
+
   if (agentId === "food") {
     return handleFoodAgent(req);
+  }
+
+  if (agentId === "grooming") {
+    return handleGroomingAgent(req);
   }
 
   if (agentId !== "meme") {
@@ -155,6 +172,57 @@ export async function POST(
       memeImageDataUrl,
       toolError,
     });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Agent run failed";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
+async function handleGeneralAgent(req: Request): Promise<Response> {
+  let body: {
+    message?: string;
+    history?: { role: "user" | "assistant"; content: string }[];
+  } = {};
+  try {
+    body = (await req.json()) as typeof body;
+  } catch {
+    /* empty body is fine */
+  }
+
+  const message =
+    typeof body.message === "string" && body.message.trim()
+      ? body.message.trim()
+      : "";
+  if (!message) {
+    return NextResponse.json({ error: "Empty message." }, { status: 400 });
+  }
+
+  const { pet } = await getPetCareContext();
+  const system = buildAssistantSystemPrompt(
+    SYSTEM_PROMPT,
+    buildPetProfilePrompt(pet),
+  );
+  const petLatLng = pet?.locationPostalCode
+    ? postalToLatLng(pet.locationPostalCode)
+    : null;
+
+  const history: ModelMessage[] = (body.history ?? [])
+    .filter((m) => m.content?.trim())
+    .slice(-10)
+    .map((m) => ({ role: m.role, content: m.content }));
+
+  try {
+    const { text } = await generateText({
+      model: getModel(),
+      system,
+      messages: [...history, { role: "user", content: message }],
+      stopWhen: stepCountIs(5),
+      tools: buildPetTools({
+        defaultPetType: speciesToPetType(pet?.species),
+        petLatLng,
+      }),
+    });
+    return NextResponse.json({ assistantText: text || undefined });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Agent run failed";
     return NextResponse.json({ error: msg }, { status: 500 });
@@ -279,6 +347,76 @@ async function handleFoodAgent(req: Request): Promise<Response> {
     return NextResponse.json({
       assistantText: assistantText || undefined,
       products,
+      toolError,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Agent run failed";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
+async function handleGroomingAgent(req: Request): Promise<Response> {
+  let body: { message?: string; lat?: number; lng?: number } = {};
+  try {
+    body = (await req.json()) as typeof body;
+  } catch {
+    /* empty body is fine */
+  }
+
+  const message =
+    typeof body.message === "string" && body.message.trim()
+      ? body.message.trim()
+      : "Suggest the best grooming stores near me for my pet.";
+
+  const { pet } = await getPetCareContext();
+  const profileText = buildPetProfilePrompt(pet);
+
+  // Resolve a seed location: browser GPS (preferred) → pet's saved postal code.
+  let lat: number | undefined;
+  let lng: number | undefined;
+  let locationNote: string;
+  if (typeof body.lat === "number" && typeof body.lng === "number") {
+    lat = body.lat;
+    lng = body.lng;
+    locationNote = "Using the user's shared current location (browser GPS).";
+  } else if (pet?.locationPostalCode) {
+    const coords = postalToLatLng(pet.locationPostalCode);
+    if (coords) {
+      lat = coords.lat;
+      lng = coords.lng;
+      locationNote = `Using the pet's saved home area (postal ${pet.locationPostalCode}${pet.locationLabel ? `, ${pet.locationLabel}` : ""}).`;
+    } else {
+      locationNote =
+        "No usable location yet — ask the user for a Singapore postal code.";
+    }
+  } else {
+    locationNote =
+      "No location on file — ask the user to share their location or give a Singapore postal code.";
+  }
+
+  const runContext: GroomingAgentContext = {
+    defaultLat: lat,
+    defaultLng: lng,
+    foundPlaces: new Map<string, ServicePlaceCard>(),
+  };
+
+  try {
+    const agent = buildGroomingAgent(profileText, locationNote);
+    const result = await run(agent, message, {
+      context: runContext,
+      maxTurns: 12,
+    });
+
+    const assistantText = extractAllTextOutput(result.newItems).trim();
+    const ctx = result.runContext.context as GroomingAgentContext;
+    const places = Array.from(ctx.foundPlaces.values());
+    const toolError = parseToolError(
+      result.newItems as { type: string; output?: unknown }[],
+    );
+
+    return NextResponse.json({
+      assistantText: assistantText || undefined,
+      places,
       toolError,
     });
   } catch (e) {

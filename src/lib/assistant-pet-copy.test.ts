@@ -6,22 +6,22 @@ import {
   buildContextPetSubtitle,
 } from "./assistant-pet-copy";
 
-const basePet = {
+import type { PetDTO } from "./pet-queries";
+
+const basePet: PetDTO = {
   id: "pet-1",
-  userId: "user-1",
   name: "Mochi",
   species: "Cat",
   breed: null,
+  photoUrl: null,
   ageYears: null,
   weightKg: null,
   medicalConditions: [],
   dietaryRestrictions: [],
   locationLabel: null,
   locationPostalCode: null,
-  photoPath: null,
-  photoUrl: null,
-  createdAt: new Date("2026-01-01T00:00:00.000Z"),
-  updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+  notes: null,
+  careLogs: [],
 };
 
 describe("buildAssistantWelcome", () => {
@@ -54,7 +54,7 @@ describe("buildContextPetSubtitle", () => {
       buildContextPetSubtitle({
         ...basePet,
         breed: "Ragdoll",
-        ageYears: 4,
+        ageYears: "4",
         medicalConditions: ["sensitive stomach", "allergies", "arthritis"],
       }),
       "Ragdoll • 4 yrs • sensitive stomach, allergies",

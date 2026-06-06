@@ -17,6 +17,12 @@ export const ASSISTANT_AGENTS = [
     kind: "food" as const,
   },
   {
+    id: "grooming",
+    label: "Grooming finder",
+    description: "Find grooming stores near you, matched to your pet.",
+    kind: "grooming" as const,
+  },
+  {
     id: "meme",
     label: "Meme agent",
     description: "Upload a pet photo and get a generated meme image.",

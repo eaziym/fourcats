@@ -60,7 +60,9 @@ export function petTypeLabel(
   petType: string | null | undefined,
 ): string | null {
   if (!petType) return null;
-  return PET_TYPE_LABELS[petType.toLowerCase()] ?? petType;
+  const value = petType.trim();
+  if (!value) return null;
+  return PET_TYPE_LABELS[value.toLowerCase()] ?? value;
 }
 
 /** Map an app pet `species` string to the data layer's `PetType` filter, if confident. */
@@ -96,7 +98,8 @@ export function speciesToPetType(
   | "small_pet"
   | undefined {
   if (!species) return undefined;
-  const s = species.toLowerCase();
+  const s = species.trim().toLowerCase();
+  if (!s) return undefined;
   if (s === "dog") return "dog";
   if (s === "cat") return "cat";
   if (s === "rabbit" || s === "small_pet") return "rabbit";
