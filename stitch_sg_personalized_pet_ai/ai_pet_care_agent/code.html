@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Little Lovely Pets - AI Care Agent</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Quicksand:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#d5e3ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error": "#ffffff",
+                        "surface": "#f8f9fa",
+                        "secondary-fixed": "#ffdf9b",
+                        "on-primary-fixed": "#400013",
+                        "on-tertiary-container": "#2c4366",
+                        "surface-dim": "#d9dadb",
+                        "surface-container": "#edeeef",
+                        "inverse-surface": "#2e3132",
+                        "on-secondary": "#ffffff",
+                        "surface-tint": "#9c3f53",
+                        "on-tertiary-fixed-variant": "#30476a",
+                        "on-tertiary-fixed": "#001b3c",
+                        "on-secondary-fixed-variant": "#5b4300",
+                        "primary-fixed": "#ffd9dd",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#554244",
+                        "on-primary-container": "#782338",
+                        "outline-variant": "#dac0c3",
+                        "inverse-on-surface": "#f0f1f2",
+                        "on-primary-fixed-variant": "#7e273c",
+                        "primary-fixed-dim": "#ffb2bd",
+                        "background": "#f8f9fa",
+                        "outline": "#887274",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#e1e3e4",
+                        "secondary-fixed-dim": "#edc157",
+                        "on-secondary-container": "#765900",
+                        "primary-container": "#ff8da1",
+                        "surface-bright": "#f8f9fa",
+                        "primary": "#9c3f53",
+                        "on-background": "#191c1d",
+                        "inverse-primary": "#ffb2bd",
+                        "on-secondary-fixed": "#251a00",
+                        "on-surface": "#191c1d",
+                        "tertiary-container": "#99b0d9",
+                        "tertiary-fixed-dim": "#b0c7f1",
+                        "secondary-container": "#ffd167",
+                        "secondary": "#785a00",
+                        "error": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "surface-container-low": "#f3f4f5",
+                        "error-container": "#ffdad6",
+                        "tertiary": "#485f84",
+                        "surface-container-high": "#e7e8e9",
+                        "surface-container-highest": "#e1e3e4"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "8px",
+                        "sm": "12px",
+                        "md": "24px",
+                        "lg": "48px",
+                        "gutter": "16px",
+                        "margin-desktop": "64px",
+                        "margin-mobile": "20px",
+                        "xs": "4px",
+                        "xl": "80px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Quicksand"],
+                        "label-sm": ["Inter"],
+                        "display-lg": ["Quicksand"],
+                        "headline-lg-mobile": ["Quicksand"],
+                        "headline-md": ["Quicksand"],
+                        "label-lg": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+          font-variation-settings:
+          'FILL' 0,
+          'wght' 400,
+          'GRAD' 0,
+          'opsz' 24
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Glassmorphism utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        
+        .ai-message-glass {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 4px 20px rgba(29, 53, 87, 0.05);
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #dac0c3;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col md:flex-row overflow-hidden">
+<!-- JSON Component: SideNavBar (Web Only) -->
+<nav class="hidden md:flex flex-col h-full fixed left-0 top-0 border-r border-outline-variant bg-surface-container-low docked w-64 shadow-md z-40">
+<div class="px-md py-md flex flex-col items-start border-b border-outline-variant/30">
+<div class="flex items-center gap-sm mb-xs">
+<span class="material-symbols-outlined text-primary text-3xl fill">pets</span>
+<h1 class="text-headline-md font-headline-md text-primary tracking-tight">Little Lovely Pets</h1>
+</div>
+<p class="text-label-sm font-label-sm text-on-surface-variant">Singapore AI Care</p>
+</div>
+<div class="flex-1 overflow-y-auto py-md px-sm space-y-xs">
+<a class="text-on-surface-variant flex items-center px-4 py-3 hover:bg-surface-container-high transition-all rounded-xl font-label-lg text-label-lg group" href="#">
+<span class="material-symbols-outlined mr-sm group-hover:scale-110 transition-transform">dashboard</span>
+                Dashboard
+            </a>
+<a class="bg-primary-container text-on-primary-container rounded-xl flex items-center px-4 py-3 font-label-lg text-label-lg shadow-sm transition-all translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined mr-sm fill">smart_toy</span>
+                AI Assistant
+            </a>
+<a class="text-on-surface-variant flex items-center px-4 py-3 hover:bg-surface-container-high transition-all rounded-xl font-label-lg text-label-lg group" href="#">
+<span class="material-symbols-outlined mr-sm group-hover:scale-110 transition-transform">map</span>
+                Local Discovery
+            </a>
+<a class="text-on-surface-variant flex items-center px-4 py-3 hover:bg-surface-container-high transition-all rounded-xl font-label-lg text-label-lg group" href="#">
+<span class="material-symbols-outlined mr-sm group-hover:scale-110 transition-transform">pets</span>
+                Pet Profiles
+            </a>
+</div>
+<div class="p-sm border-t border-outline-variant/30 space-y-xs">
+<a class="text-on-surface-variant flex items-center px-4 py-3 hover:bg-surface-container-high transition-all rounded-xl font-label-lg text-label-lg group" href="#">
+<span class="material-symbols-outlined mr-sm">settings</span>
+                Settings
+            </a>
+<a class="text-on-surface-variant flex items-center px-4 py-3 hover:bg-surface-container-high transition-all rounded-xl font-label-lg text-label-lg group" href="#">
+<span class="material-symbols-outlined mr-sm">help</span>
+                Support
+            </a>
+<div class="mt-md px-sm pb-sm">
+<button class="w-full bg-gradient-to-r from-primary-container to-primary-fixed text-on-primary-container font-label-lg text-label-lg py-sm rounded-full shadow-sm hover:shadow-md transition-all active:scale-95 flex justify-center items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">calendar_month</span>
+                    Book Vet
+                </button>
+</div>
+</div>
+</nav>
+<!-- JSON Component: TopAppBar (Web Only) -->
+<header class="fixed top-0 left-0 w-full z-30 flex justify-between items-center px-margin-mobile md:px-margin-desktop h-16 bg-surface shadow-sm docked md:pl-[calc(256px+24px)] transition-all">
+<div class="flex items-center gap-sm">
+<div class="md:hidden flex items-center">
+<span class="material-symbols-outlined text-primary text-2xl fill mr-xs">pets</span>
+<span class="text-headline-md font-headline-md font-bold text-primary">Little Lovely Pets</span>
+</div>
+<!-- Context Header -->
+<div class="hidden md:flex items-center bg-surface-container-low px-sm py-xs rounded-full border border-outline-variant/50">
+<div class="w-6 h-6 rounded-full overflow-hidden mr-xs relative">
+<img alt="Mochi" class="w-full h-full object-cover" data-alt="A close-up portrait of a small, fluffy white and brown Shih Tzu dog with bright, engaging eyes. The lighting is soft and studio-quality, highlighting the texture of the dog's fur. The background is a clean, modern, light studio setting, reflecting a premium, professional pet care aesthetic. The image conveys warmth and approachability." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCjyf1cAFJJy7tu7uEbnFYn-aJr0KkIlGrAbTDzJgFkZMV1C8rEnwJY_TLRiaNW-GreL4R-GtItkX6uQgi7k6z_-dwZetX2KWotALR4p9Y4COvbcu8sD4HqCthDyxd8RJs4WNVD_3l1MEt-UmaWcxaZAQXKXEdRsQq52A3OMtMu_EIkwoaRp47MHUag7ssY93pe3t5GmKKSm5xxIQvfEfev1-yVwZRfx_3JJTWpWkCW7nOpX0YIiWUga5x2lhJLMFKsyGPtNC3wWSh0"/>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+                    Chatting for: <strong class="text-on-surface">Mochi</strong>
+<span class="text-outline text-[10px]">•</span> Shih Tzu, 4yo 
+                    <span class="text-outline text-[10px]">•</span> Sensitive Skin
+                </span>
+</div>
+</div>
+<div class="flex items-center gap-sm">
+<button class="p-xs text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-xs text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col md:pl-64 pt-16 md:pt-16 pb-20 md:pb-0 h-screen relative bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PGRlZnM+PHBhdHRlcm4gaWQ9InBhdHRlcm4iIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9IiNkYWMwYzMiIGZpbGwtb3BhY2l0eT0iMC4yIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI3BhdHRlcm4pIi8+PC9zdmc+')] bg-repeat">
+<!-- Mobile Context Header (Visible only on mobile) -->
+<div class="md:hidden flex items-center justify-center bg-surface-container-low px-sm py-2 border-b border-outline-variant/30 sticky top-0 z-20 shadow-sm shadow-[0_4px_20px_rgba(29,53,87,0.02)]">
+<div class="w-6 h-6 rounded-full overflow-hidden mr-xs relative">
+<img alt="Mochi" class="w-full h-full object-cover" data-alt="A close-up portrait of a small, fluffy white and brown Shih Tzu dog with bright, engaging eyes. The lighting is soft and studio-quality, highlighting the texture of the dog's fur. The background is a clean, modern, light studio setting, reflecting a premium, professional pet care aesthetic. The image conveys warmth and approachability." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAVdyQhCUPfkG7qaF0Ile6keHuep4qhKf-EqUERKuzZ2EHtV493W4J7KaTZG0IE_C89cEh3KoN40u67l_Fsmui7x8wJU7XrAz1r8xxEYj2FPp2Wf05S-bY5TbTwgEw9uMEWO6h4nSoPMsd4d0LMv5aNT_7OgH1S36mcrLFHmjHAKXM5Gr4p2tVTyG1d_2ZF67b27-CojpIwp8aUWmELCxmhq7S8zjbXUkEgdTjt2ecYxIgStD6gJGSm_25HFVp7HmTqS3QoUBuKD-_k"/>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">
+                Chatting for: <strong class="text-on-surface">Mochi</strong> (Shih Tzu)
+            </span>
+</div>
+<div class="flex-1 flex flex-col md:flex-row overflow-hidden max-w-7xl mx-auto w-full">
+<!-- Chat Canvas -->
+<div class="flex-1 flex flex-col h-full relative p-margin-mobile md:p-md overflow-y-auto">
+<!-- Date Divider -->
+<div class="flex justify-center mb-md">
+<span class="bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm px-3 py-1 rounded-full opacity-70">Today</span>
+</div>
+<!-- Chat History -->
+<div class="space-y-lg pb-24">
+<!-- AI Welcome Message -->
+<div class="flex items-start gap-sm max-w-[85%]">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center flex-shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-on-primary-container text-[18px] fill">smart_toy</span>
+</div>
+<div class="ai-message-glass rounded-2xl rounded-tl-sm p-sm md:p-4 relative">
+<p class="font-body-md text-body-md text-on-surface">
+                                Hi there! How is Mochi doing today? I'm ready to help with any grooming, health, or lifestyle questions you have for your Shih Tzu.
+                            </p>
+</div>
+</div>
+<!-- User Message -->
+<div class="flex items-start gap-sm justify-end max-w-[85%] ml-auto">
+<div class="bg-gradient-to-br from-primary-fixed to-primary-container rounded-2xl rounded-tr-sm p-sm md:p-4 shadow-[0_4px_15px_rgba(156,63,83,0.15)]">
+<p class="font-body-md text-body-md text-on-primary-container">
+                                Best groomer near Tampines for my Shih Tzu with sensitive skin?
+                            </p>
+</div>
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center flex-shrink-0 shadow-sm border border-outline-variant/30 overflow-hidden">
+<span class="material-symbols-outlined text-on-secondary-container text-[18px]">person</span>
+</div>
+</div>
+<!-- AI Processing Indicator (Simulated past state, hidden in final render, keeping for structure if needed for JS) -->
+<!-- 
+                    <div class="flex items-start gap-sm max-w-[85%] opacity-50">
+                        <div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-on-primary-container text-[18px]">more_horiz</span>
+                        </div>
+                    </div> 
+                    -->
+<!-- AI Response -->
+<div class="flex items-start gap-sm max-w-[95%] md:max-w-[85%]">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center flex-shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-on-primary-container text-[18px] fill">smart_toy</span>
+</div>
+<div class="ai-message-glass rounded-2xl rounded-tl-sm p-sm md:p-md relative flex flex-col gap-sm">
+<p class="font-body-md text-body-md text-on-surface">
+                                Based on Mochi's profile, sensitive skin requires special care. I've found a highly-rated groomer in Tampines that specializes in dermatological needs.
+                            </p>
+<!-- Recommended Entity Card Embedded in Chat -->
+<div class="bg-surface rounded-xl p-sm border border-outline-variant/40 flex items-start gap-sm shadow-sm hover:shadow-md transition-shadow cursor-pointer mt-xs">
+<div class="w-16 h-16 rounded-lg bg-surface-container overflow-hidden flex-shrink-0">
+<img alt="Grooming Salon" class="w-full h-full object-cover" data-alt="A bright, impeccably clean pet grooming salon interior. The space features modern white cabinetry, stainless steel washing stations, and soft, natural lighting pouring in through a large window. The overall aesthetic is professional, hygienic, and calming, fitting a premium light-mode modern UI design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBRmAHF9LbMjy_7N5h6pxdbdAYMmhBWouC4yRRundAaX4h7kcdc8gk5rnDyJr_MmHmsd_sx9yB7nPMsqH22nk8X-1LDn5egJHtd98LvlHux9YqypPx3U1bmJHcUBCR2uOGzoDW73XfYbMKMaS5jW4sbKZG14n-xd1OONzDXiwzGYfQoZQsTHTm33SUXVPgEdmfo_q-v70_hXr-p5fk6Ts4mUFqvNZAfh4347ceBp7pnZ1ECGHeDsVy56W7dbSkABswwG8NyuGPLCKiR"/>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start">
+<h4 class="font-label-lg text-label-lg text-on-surface font-semibold">Heartland Paws Tampines</h4>
+<div class="flex items-center gap-[2px] bg-secondary-container/30 px-2 py-[2px] rounded text-secondary font-label-sm text-[11px]">
+<span class="material-symbols-outlined text-[12px] fill text-secondary">star</span>
+                                            4.8
+                                        </div>
+</div>
+<p class="font-body-md text-[13px] text-on-surface-variant leading-tight mt-[2px]">Specializes in medicated baths &amp; hypoallergenic styling.</p>
+<div class="flex flex-wrap gap-1 mt-2">
+<span class="inline-flex items-center gap-1 bg-[#FFF9E6] text-[#B8860B] px-2 py-[2px] rounded text-[10px] font-medium border border-[#F0E6D2]">
+<span class="material-symbols-outlined text-[12px]">verified</span> HDB-Approved
+                                        </span>
+<span class="inline-flex items-center gap-1 bg-surface-container-high text-on-surface-variant px-2 py-[2px] rounded text-[10px] font-medium">
+<span class="material-symbols-outlined text-[12px]">location_on</span> 1.2km away
+                                        </span>
+</div>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface mt-xs">
+                                They use an oatmeal-based medicated shampoo which is perfect for Shih Tzus with sensitive skin. Would you like me to check their availability for this weekend?
+                            </p>
+<!-- Quick Actions -->
+<div class="flex flex-wrap gap-2 mt-xs">
+<button class="bg-surface-container text-primary font-label-sm text-label-sm px-3 py-1.5 rounded-full border border-outline-variant/50 hover:bg-primary-container hover:border-primary-container transition-colors">Yes, check Saturday</button>
+<button class="bg-surface-container text-primary font-label-sm text-label-sm px-3 py-1.5 rounded-full border border-outline-variant/50 hover:bg-primary-container hover:border-primary-container transition-colors">Show other options</button>
+<button class="bg-surface-container text-primary font-label-sm text-label-sm px-3 py-1.5 rounded-full border border-outline-variant/50 hover:bg-primary-container hover:border-primary-container transition-colors">Call them</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Input Area (Fixed to bottom of chat area) -->
+<div class="absolute bottom-0 left-0 w-full p-margin-mobile md:p-md bg-gradient-to-t from-background via-background to-transparent pt-lg">
+<div class="glass-panel rounded-full p-1 pl-4 flex items-center shadow-lg relative max-w-3xl mx-auto border-outline-variant/50 focus-within:border-primary transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant mr-2 opacity-50">mic</span>
+<input class="flex-1 bg-transparent border-none focus:ring-0 text-body-md font-body-md text-on-surface placeholder-on-surface-variant/50 py-3 px-2 outline-none" placeholder="Ask about Mochi's health, diet, or local services..." type="text"/>
+<button class="bg-primary text-on-primary w-10 h-10 rounded-full flex items-center justify-center hover:bg-on-primary-container transition-colors shadow-md transform hover:scale-105 active:scale-95 ml-2">
+<span class="material-symbols-outlined text-[20px]">send</span>
+</button>
+</div>
+</div>
+</div>
+<!-- 'Sources' Sidebar (Hidden on small screens, shown as contextual overlay if needed, here as a side panel) -->
+<aside class="hidden lg:flex flex-col w-80 border-l border-outline-variant/30 bg-surface-container-lowest h-full p-md overflow-y-auto z-10 shadow-[-4px_0_20px_rgba(29,53,87,0.02)]">
+<div class="flex items-center gap-2 mb-md text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">info</span>
+<h3 class="font-headline-sm text-label-lg font-semibold tracking-wide uppercase text-xs">AI Context Sources</h3>
+</div>
+<div class="space-y-sm">
+<!-- Source Card 1 -->
+<div class="bg-surface border border-outline-variant/40 rounded-xl p-sm hover:shadow-sm transition-shadow">
+<div class="flex items-center gap-xs mb-2">
+<div class="w-6 h-6 rounded bg-[#E8F0FE] flex items-center justify-center text-[#1A73E8]">
+<span class="material-symbols-outlined text-[14px]">map</span>
+</div>
+<span class="font-label-sm text-[11px] text-on-surface-variant font-medium">Google Maps API</span>
+</div>
+<h5 class="font-label-sm text-on-surface mb-1 leading-tight">Heartland Paws Reviews</h5>
+<p class="font-body-md text-[12px] text-on-surface-variant line-clamp-3 leading-relaxed">
+                            "Absolutely wonderful with my sensitive pup. They used a special medicated shampoo that didn't irritate her skin at all. Highly recommend for delicate breeds."
+                        </p>
+</div>
+<!-- Source Card 2 -->
+<div class="bg-surface border border-outline-variant/40 rounded-xl p-sm hover:shadow-sm transition-shadow">
+<div class="flex items-center gap-xs mb-2">
+<div class="w-6 h-6 rounded bg-[#FCE8E6] flex items-center justify-center text-[#D93025]">
+<span class="material-symbols-outlined text-[14px]">local_pharmacy</span>
+</div>
+<span class="font-label-sm text-[11px] text-on-surface-variant font-medium">Pet Lovers Centre Data</span>
+</div>
+<h5 class="font-label-sm text-on-surface mb-1 leading-tight">Oatmeal Medicated Shampoo</h5>
+<p class="font-body-md text-[12px] text-on-surface-variant leading-relaxed">
+                            Recommended for Shih Tzus (Age 3+). Alleviates itching and environmental allergies common in humid Singaporean climates.
+                        </p>
+</div>
+</div>
+<!-- Ambient Deco -->
+<div class="mt-auto pt-lg opacity-20 pointer-events-none flex justify-center">
+<span class="material-symbols-outlined text-[120px] text-primary">cruelty_free</span>
+</div>
+</aside>
+</div>
+</main>
+<!-- JSON Component: BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-margin-mobile py-2 pb-safe bg-surface-container-highest shadow-[0_-4px_20px_rgba(29,53,87,0.05)] rounded-t-xl docked">
+<a class="flex flex-col items-center justify-center text-on-surface-variant font-label-sm text-label-sm active:bg-surface-variant rounded-lg p-1 transition-all" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px]">home</span>
+            Home
+        </a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 font-label-sm text-label-sm scale-110 transition-transform duration-200 shadow-sm" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px] fill">chat_bubble</span>
+            AI Chat
+        </a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant font-label-sm text-label-sm active:bg-surface-variant rounded-lg p-1 transition-all" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px]">explore</span>
+            Explore
+        </a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant font-label-sm text-label-sm active:bg-surface-variant rounded-lg p-1 transition-all" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px]">person</span>
+            Profile
+        </a>
+</nav>
+</body></html>

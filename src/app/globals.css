@@ -48,6 +48,7 @@
 
 :root {
   --radius: 0.65rem;
+  --font-brand: "Arial Rounded MT Bold", "Trebuchet MS", var(--font-geist-sans);
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
@@ -122,6 +123,88 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@keyframes rb-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rb-shine {
+  from {
+    background-position: 200% center;
+  }
+  to {
+    background-position: -200% center;
+  }
+}
+
+.rb-fade-content {
+  animation: rb-fade-up 520ms ease both;
+}
+
+.rb-animated-list > * {
+  animation: rb-fade-up 420ms ease both;
+}
+
+.rb-animated-list > *:nth-child(2) {
+  animation-delay: 70ms;
+}
+
+.rb-animated-list > *:nth-child(3) {
+  animation-delay: 140ms;
+}
+
+.rb-spotlight-card {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+
+.rb-spotlight-card::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background: radial-gradient(
+    460px circle at var(--x, 20%) var(--y, 0%),
+    rgb(255 141 161 / 0.18),
+    transparent 38%
+  );
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.rb-spotlight-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px rgb(29 53 87 / 0.09);
+}
+
+.rb-spotlight-card:hover::before {
+  opacity: 1;
+}
+
+.rb-shiny-text {
+  background: linear-gradient(
+    90deg,
+    #191c1d 0%,
+    #9c3f53 42%,
+    #191c1d 62%,
+    #191c1d 100%
+  );
+  background-size: 200% auto;
+  color: transparent;
+  background-clip: text;
+  animation: rb-shine 7s linear infinite;
 }
 
 /* ReactFlow custom node styling overrides */

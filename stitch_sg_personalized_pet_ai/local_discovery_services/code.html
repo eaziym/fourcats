@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Little Lovely Pets - Local Discovery</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Quicksand:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#d5e3ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error": "#ffffff",
+                        "surface": "#f8f9fa",
+                        "secondary-fixed": "#ffdf9b",
+                        "on-primary-fixed": "#400013",
+                        "on-tertiary-container": "#2c4366",
+                        "surface-dim": "#d9dadb",
+                        "surface-container": "#edeeef",
+                        "inverse-surface": "#2e3132",
+                        "on-secondary": "#ffffff",
+                        "surface-tint": "#9c3f53",
+                        "on-tertiary-fixed-variant": "#30476a",
+                        "on-tertiary-fixed": "#001b3c",
+                        "on-secondary-fixed-variant": "#5b4300",
+                        "primary-fixed": "#ffd9dd",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#554244",
+                        "on-primary-container": "#782338",
+                        "outline-variant": "#dac0c3",
+                        "inverse-on-surface": "#f0f1f2",
+                        "on-primary-fixed-variant": "#7e273c",
+                        "primary-fixed-dim": "#ffb2bd",
+                        "background": "#f8f9fa",
+                        "outline": "#887274",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#e1e3e4",
+                        "secondary-fixed-dim": "#edc157",
+                        "on-secondary-container": "#765900",
+                        "primary-container": "#ff8da1",
+                        "surface-bright": "#f8f9fa",
+                        "primary": "#9c3f53",
+                        "on-background": "#191c1d",
+                        "inverse-primary": "#ffb2bd",
+                        "on-secondary-fixed": "#251a00",
+                        "on-surface": "#191c1d",
+                        "tertiary-container": "#99b0d9",
+                        "tertiary-fixed-dim": "#b0c7f1",
+                        "secondary-container": "#ffd167",
+                        "secondary": "#785a00",
+                        "error": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "surface-container-low": "#f3f4f5",
+                        "error-container": "#ffdad6",
+                        "tertiary": "#485f84",
+                        "surface-container-high": "#e7e8e9",
+                        "surface-container-highest": "#e1e3e4"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "8px",
+                        "sm": "12px",
+                        "md": "24px",
+                        "lg": "48px",
+                        "gutter": "16px",
+                        "margin-desktop": "64px",
+                        "margin-mobile": "20px",
+                        "xs": "4px",
+                        "xl": "80px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Quicksand"],
+                        "label-sm": ["Inter"],
+                        "display-lg": ["Quicksand"],
+                        "headline-lg-mobile": ["Quicksand"],
+                        "headline-md": ["Quicksand"],
+                        "label-lg": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        .soft-shadow {
+            box-shadow: 0px 4px 20px rgba(29, 53, 87, 0.05);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background antialiased flex flex-col md:flex-row h-screen overflow-hidden">
+<!-- TopAppBar (Mobile Only) -->
+<header class="md:hidden fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-mobile h-16 bg-surface shadow-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="pets" data-weight="fill" style="font-variation-settings: 'FILL' 1;">pets</span>
+<span class="text-headline-md font-headline-md font-bold text-primary tracking-tight">Little Lovely Pets</span>
+</div>
+<div class="flex gap-4">
+<button aria-label="account_circle" class="text-primary hover:text-primary-fixed transition-colors scale-95 active:scale-90">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+<button aria-label="notifications" class="text-primary hover:text-primary-fixed transition-colors scale-95 active:scale-90">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</div>
+</header>
+<!-- SideNavBar (Desktop Only) -->
+<nav class="hidden md:flex flex-col h-full fixed left-0 top-0 border-r border-outline-variant bg-surface-container-low w-64 shadow-md z-40">
+<div class="p-6 flex flex-col items-center border-b border-outline-variant/30">
+<div class="w-20 h-20 rounded-full overflow-hidden mb-4 border-2 border-primary-container p-1">
+<img alt="User's pet profile picture" class="w-full h-full object-cover rounded-full" data-alt="A close-up portrait of a well-groomed beagle dog looking directly at the camera with a friendly expression. The background is softly out of focus, highlighting the dog's warm brown eyes and soft fur. The lighting is bright and natural, creating a welcoming and modern pet profile aesthetic. The overall mood is affectionate and professional, suitable for a high-end pet care application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCv94TFws-tNGWP412mfGDKxzJ2Z4XByL8qakxZsbZ7ckBtXI3brbpNhp5Qu2BI3ADK4E8nhzFQG4G3AaFFpFxoCUfLmTNNETF2Jr-84LyG9d2O_9JwIM3yMg5lR6n5JAPXmpTNomZGI9a1EF0TdpACAflvKptgWs9JzLI04LY4q39Wb61r3GFrwmrzBQyRakJTmDB21y-yN-JL7tSLC3GIOTgANmiVgT-VVv04qrnxSnFrEs-rTDAoncMHvq1YY9rr3-f0g0loxibP"/>
+</div>
+<h1 class="font-headline-sm text-headline-sm font-bold text-on-surface">Little Lovely Pets</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Singapore AI Care</p>
+</div>
+<div class="flex-1 py-6 px-4 space-y-2 overflow-y-auto">
+<a class="text-on-surface-variant flex items-center px-4 py-3 hover:bg-surface-container-high transition-all rounded-xl font-label-lg text-label-lg group" href="#">
+<span class="material-symbols-outlined mr-4 group-hover:text-primary transition-colors" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="text-on-surface-variant flex items-center px-4 py-3 hover:bg-surface-container-high transition-all rounded-xl font-label-lg text-label-lg group" href="#">
+<span class="material-symbols-outlined mr-4 group-hover:text-primary transition-colors" data-icon="smart_toy">smart_toy</span>
+                AI Assistant
+            </a>
+<a class="bg-primary-container text-on-primary-container rounded-xl flex items-center px-4 py-3 font-label-lg text-label-lg transform translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined mr-4 text-primary" data-icon="map" data-weight="fill" style="font-variation-settings: 'FILL' 1;">map</span>
+                Local Discovery
+            </a>
+<a class="text-on-surface-variant flex items-center px-4 py-3 hover:bg-surface-container-high transition-all rounded-xl font-label-lg text-label-lg group" href="#">
+<span class="material-symbols-outlined mr-4 group-hover:text-primary transition-colors" data-icon="pets">pets</span>
+                Pet Profiles
+            </a>
+</div>
+<div class="p-4 border-t border-outline-variant/30 space-y-2">
+<button class="w-full bg-gradient-to-r from-primary to-primary-fixed-dim text-on-primary rounded-full py-3 font-label-lg text-label-lg shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]" data-icon="calendar_month">calendar_month</span>
+                Book Vet
+            </button>
+<div class="flex justify-around pt-2">
+<button aria-label="Settings" class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-full transition-all">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<button aria-label="Support" class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-full transition-all">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</button>
+</div>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col md:flex-row md:ml-64 pt-16 md:pt-0 h-full relative">
+<!-- Left Panel: Filtered List -->
+<div class="w-full md:w-[450px] lg:w-[500px] h-1/2 md:h-full bg-surface-container-lowest flex flex-col z-10 shadow-[4px_0_24px_rgba(0,0,0,0.05)] border-r border-outline-variant/20">
+<!-- Search & Filter Header -->
+<div class="p-margin-mobile md:p-md border-b border-outline-variant/20 bg-surface-container-lowest/80 backdrop-blur-md sticky top-0 z-20">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-background mb-1">Local Discovery</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">Find trusted services in Singapore.</p>
+<!-- Search Bar -->
+<div class="relative group mb-4">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors" data-icon="search">search</span>
+<input class="w-full pl-12 pr-4 py-3 bg-surface border border-outline-variant/50 rounded-xl font-body-md text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-container focus:border-primary transition-all shadow-sm" placeholder="Find services near Tampines..." type="text"/>
+<button class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-surface-container-high rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="tune">tune</span>
+</button>
+</div>
+<!-- Personalization Chip -->
+<div class="flex items-center gap-2 bg-gradient-to-r from-secondary-container/30 to-transparent p-2 rounded-lg border border-secondary-container/50 mb-4">
+<div class="w-8 h-8 rounded-full overflow-hidden bg-white shadow-sm flex-shrink-0">
+<img alt="Mochi the dog" class="w-full h-full object-cover" data-alt="A small fluffy white dog, possibly a maltese or poodle mix, with a cute pink bow, looking up attentively. The background is a soft, out-of-focus pastel setting. The lighting is bright and cheerful, emphasizing the pet's clean and well-groomed appearance. This image represents the user's personal pet profile." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBE7Ly4RQZ0LwwCmX7idMG72DLNvoKFn01XDlGv77ywdf_AKYrRx0Lkh6FweKQQPvpw7aUl466FJ3NAeP0RYDpYYWhVtc6FLnsDyac38EveK3re1yiztgQrElPYg9gt6vyR1QkxOaaKIYFk_Rfk5SWFqUIFn1EQi89N7Dc10I2dKKYdnWH3iFib4JSVCI7s2bP8F9JOG9ohzYnskGiyjs8MuNo_y5u_EMbb00v9KTvfs47fauhwbZqsp7dVz1aPzize2i1Bv0ZkMDgv"/>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-on-secondary-container font-semibold">Top picks for Mochi</p>
+<p class="text-[10px] text-on-surface-variant">Filtered for sensitive skin expertise</p>
+</div>
+<button class="ml-auto text-primary text-[12px] font-semibold hover:underline px-2">Edit</button>
+</div>
+<!-- Filter Pills -->
+<div class="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+<button class="px-4 py-1.5 bg-primary text-on-primary rounded-full font-label-sm text-label-sm whitespace-nowrap shadow-sm transition-all flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]" data-icon="content_cut">content_cut</span>
+                        Groomers
+                    </button>
+<button class="px-4 py-1.5 bg-surface-container border border-outline-variant/50 text-on-surface rounded-full font-label-sm text-label-sm whitespace-nowrap hover:bg-surface-container-high transition-all flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]" data-icon="local_hospital">local_hospital</span>
+                        Vets
+                    </button>
+<button class="px-4 py-1.5 bg-surface-container border border-outline-variant/50 text-on-surface rounded-full font-label-sm text-label-sm whitespace-nowrap hover:bg-surface-container-high transition-all flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]" data-icon="local_cafe">local_cafe</span>
+                        Pet-Friendly Cafes
+                    </button>
+<button class="px-4 py-1.5 bg-surface-container border border-outline-variant/50 text-on-surface rounded-full font-label-sm text-label-sm whitespace-nowrap hover:bg-surface-container-high transition-all flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]" data-icon="storefront">storefront</span>
+                        Supplies
+                    </button>
+</div>
+</div>
+<!-- List Content -->
+<div class="flex-1 overflow-y-auto p-margin-mobile md:p-md space-y-4 pb-24 md:pb-md">
+<!-- Business Card 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-3 flex gap-4 soft-shadow border border-outline-variant/20 hover:border-primary-container transition-colors group cursor-pointer relative overflow-hidden">
+<div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-secondary-container/20 to-transparent rounded-bl-3xl z-0"></div>
+<div class="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 relative z-10">
+<img alt="Fluffy Paws Spa" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A pristine, modern pet grooming salon interior. Clean white subway tiles, brushed gold fixtures, and soft warm lighting create a luxurious, hygienic atmosphere. A grooming table stands in the center, and neatly organized high-end pet shampoos are visible on floating shelves. The overall style is modern warmth, suitable for a premium Singaporean pet care facility." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBovJOQslVjz1xFN4tBln3ZqdzIVtkhROl7qCZ42dchrpJQUMCIrleZJAG8NzEGeGAXYar2UxFMRuLPFEPpAVt6W2bKWA1tektdtBA4UypX2YFn2OA0-AMYYO9dLbCtXC6z1dA6EIUrn-gGld7x0mofCHujzXuMp8Z09SvrwRNVVp-58ugY5TbiOSNt55535qcTzJKTgaKcA_xhORoN84YBrGbFKZXkI15HkfQRqjAoOwT1TsnznRYBdYw7SiBkP2svp2I10w990jm3"/>
+<div class="absolute top-1 left-1 bg-white/90 backdrop-blur text-secondary font-bold text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[10px]" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span> 4.9
+                        </div>
+</div>
+<div class="flex-1 flex flex-col justify-center z-10">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline-md text-[16px] leading-tight text-on-surface font-bold group-hover:text-primary transition-colors">Fluffy Paws Spa</h3>
+<button aria-label="Save" class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="favorite">favorite</span>
+</button>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1 mb-2">
+<span class="material-symbols-outlined text-[14px]" data-icon="location_on">location_on</span>
+                            Tampines Hub • 1.2km
+                        </p>
+<div class="flex flex-wrap gap-1 mb-3">
+<span class="bg-secondary-container/30 text-secondary-fixed-dim px-2 py-0.5 rounded text-[10px] font-semibold border border-secondary-container/50">Sensitive Skin Expert</span>
+<span class="bg-surface-container text-on-surface-variant px-2 py-0.5 rounded text-[10px] font-medium border border-outline-variant/30">HDB-Approved</span>
+</div>
+<div class="flex justify-between items-center mt-auto">
+<p class="text-[12px] font-medium text-on-surface"><span class="text-primary font-bold">$$</span>$</p>
+<button class="bg-primary/10 text-primary hover:bg-primary hover:text-white px-3 py-1.5 rounded-full font-label-sm text-label-sm font-bold transition-all active:scale-95">Book Now</button>
+</div>
+</div>
+</div>
+<!-- Business Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-3 flex gap-4 soft-shadow border border-outline-variant/20 hover:border-primary-container transition-colors group cursor-pointer relative overflow-hidden">
+<div class="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 relative z-10">
+<img alt="Urban Tails Grooming" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A stylish, contemporary pet grooming station focusing on a clean, well-lit environment. Professional grooming tools like shears and clippers are laid out neatly on a clean wooden surface next to a white basin. The lighting is bright and sterile yet inviting, emphasizing hygiene and professional care in an urban setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDWZkMQFk8T5nESEGsIlc_4xFwmeBMmLL05aqVk3hKV2aqSbwQpZHiBiK7e58C5m6QsY1uPK8JDs09CuHA5oS4OeBrE1h7KNiF8CdavHBU2drwbqc28uD7cruSHV8C_GV95MkVDBOmT_LEBpjkHebOR-G-2nBcxbSUYQTHaALxxnyp8YCS7IpT6945QLK2ef84TzRqmnETLhaWHrDdMcBSyfahKhozRsHFwqVPYgRo_4E5tYVPUVpTXRri92L0Va5VIt-heKGgrKdbC"/>
+<div class="absolute top-1 left-1 bg-white/90 backdrop-blur text-secondary font-bold text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[10px]" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span> 4.7
+                        </div>
+</div>
+<div class="flex-1 flex flex-col justify-center z-10">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline-md text-[16px] leading-tight text-on-surface font-bold group-hover:text-primary transition-colors">Urban Tails Grooming</h3>
+<button aria-label="Save" class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="favorite">favorite</span>
+</button>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1 mb-2">
+<span class="material-symbols-outlined text-[14px]" data-icon="location_on">location_on</span>
+                            Bedok Mall • 3.5km
+                        </p>
+<div class="flex flex-wrap gap-1 mb-3">
+<span class="bg-surface-container text-on-surface-variant px-2 py-0.5 rounded text-[10px] font-medium border border-outline-variant/30">Organic Shampoos</span>
+<span class="bg-surface-container text-on-surface-variant px-2 py-0.5 rounded text-[10px] font-medium border border-outline-variant/30">Cat Friendly</span>
+</div>
+<div class="flex justify-between items-center mt-auto">
+<p class="text-[12px] font-medium text-on-surface"><span class="text-primary font-bold">$$$</span></p>
+<button class="bg-primary/10 text-primary hover:bg-primary hover:text-white px-3 py-1.5 rounded-full font-label-sm text-label-sm font-bold transition-all active:scale-95">Book Now</button>
+</div>
+</div>
+</div>
+<!-- Ad/Promo Card -->
+<div class="bg-gradient-to-br from-tertiary-container to-tertiary-fixed rounded-xl p-4 flex flex-col relative overflow-hidden soft-shadow">
+<div class="absolute -right-4 -bottom-4 opacity-20">
+<span class="material-symbols-outlined text-[120px]" data-icon="loyalty">loyalty</span>
+</div>
+<div class="relative z-10">
+<span class="bg-on-tertiary-container text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider mb-2 inline-block">Special Offer</span>
+<h4 class="font-headline-md text-[18px] text-on-tertiary-container font-bold leading-tight mb-1">First Grooming 20% Off</h4>
+<p class="font-body-md text-[12px] text-on-tertiary-container/80 mb-3">Available at selected partners near Tampines.</p>
+<button class="bg-on-tertiary-container text-white px-4 py-2 rounded-full font-label-sm text-[12px] font-bold w-max shadow-sm hover:bg-on-tertiary-fixed transition-colors">Claim Offer</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Panel: Map (Interactive Canvas) -->
+<div class="flex-1 h-1/2 md:h-full relative bg-surface-variant z-0">
+<!-- Map Placeholder Image -->
+<img alt="Map of Singapore" class="w-full h-full object-cover" data-alt="A highly detailed, stylized digital map of a modern city area, resembling Singapore's urban planning. The map uses a light-mode color palette with soft greys for roads, pale greens for parks, and subtle blues for water bodies. The aesthetic is clean, professional, and slightly simplified to serve as a high-end UI background for navigation, avoiding overwhelming visual clutter while maintaining geographical accuracy." data-location="Singapore" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDD5RgMdw4tWV5rU-sV7NsgdcCpT1XmAQcQvKwmQS0y877yRPSlRyNh5AV0mmgJZkP2yovNJpKA4K91OSPEn2ez2LIDxp_oKbJp7on9kXAd3ryZ-cBMUzonfmkQJDWaVwLoueR-4TYzWRDlttA9B1lYE4nRZ8Ay-8CkoNdxkTOzE0w9nQnHmIoRzpYylTofGLE3r1EsFvuiwEQDDhs0CX1YML93MPeEvvB98KnxwrKCoG_qLjkBnAkvBQ8K5Hq4F3sxnyWvGW-6Ivog"/>
+<!-- Map Overlay Gradient for depth -->
+<div class="absolute inset-0 bg-gradient-to-t from-surface/50 to-transparent pointer-events-none"></div>
+<!-- Map Controls -->
+<div class="absolute right-4 top-4 flex flex-col gap-2 z-10">
+<button class="w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center text-on-surface hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="my_location">my_location</span>
+</button>
+<div class="bg-white rounded-full shadow-md flex flex-col overflow-hidden">
+<button class="w-10 h-10 flex items-center justify-center text-on-surface hover:bg-surface-container-low transition-colors border-b border-outline-variant/20">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center text-on-surface hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined" data-icon="remove">remove</span>
+</button>
+</div>
+</div>
+<!-- Interactive Map Pins -->
+<!-- Pin 1: Selected (Fluffy Paws) -->
+<div class="absolute top-[40%] left-[30%] -translate-x-1/2 -translate-y-full flex flex-col items-center group z-20 cursor-pointer">
+<div class="glass-panel p-2 rounded-lg shadow-lg mb-2 opacity-100 transition-opacity duration-300 w-48 pointer-events-none">
+<div class="flex gap-2 items-center">
+<div class="w-10 h-10 rounded bg-primary-container flex-shrink-0 overflow-hidden">
+<img alt="Thumbnail" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCi3j51Znq8miIdOm8B6yfIeZUhMmANYcc3UydLND9qGNPjouAr8I3q3APe239kXWyKnCM45D0L34WZjkAMdRPzsyHO8J_vKTSdHGYnBg9FXz7mozfd6OjcrrPNf2enN3NRgUlyuOvkRdRTu46oCQDhE4-X8XrA1JF4sh2EPe82VbyqTbPWM0C47fsDEgOa_pnbqclJWj7z1NszbgI9gjvpXbJHcBZKIwDzw9xuLIyUMrsHeKF24jeKZ_sNlDMZgBy9NKiAy1rp7ETK"/>
+</div>
+<div>
+<p class="font-label-sm text-[12px] font-bold text-on-surface leading-tight">Fluffy Paws Spa</p>
+<p class="text-[10px] text-primary font-semibold flex items-center"><span class="material-symbols-outlined text-[10px] mr-0.5" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>4.9 (120)</p>
+</div>
+</div>
+</div>
+<div class="relative w-10 h-10 flex items-center justify-center">
+<div class="absolute inset-0 bg-primary/20 rounded-full animate-ping"></div>
+<div class="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white relative z-10 transform scale-110">
+<span class="material-symbols-outlined text-[16px]" data-icon="content_cut">content_cut</span>
+</div>
+</div>
+</div>
+<!-- Pin 2: Unselected -->
+<div class="absolute top-[55%] left-[60%] -translate-x-1/2 -translate-y-full flex flex-col items-center group z-10 cursor-pointer hover:z-30">
+<div class="glass-panel p-2 rounded-lg shadow-lg mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 w-48 pointer-events-none">
+<div class="flex gap-2 items-center">
+<div class="w-10 h-10 rounded bg-surface-container flex-shrink-0 overflow-hidden">
+<img alt="Thumbnail" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXEeQ8KYWL9E1nf30hCHWW9iFEDxdEtpPz2igOTQccZtyttWLtTqx3GZYP-7m5eR3mnz5lK6HdCoFTreOZp2OkfYg5cQCsxwjqVvgc_a7kZxTYlEognss_96nQl8S3UQR9SJnDHtdh91Cw9LUQmEdAXTm-PFglsdlktpefRNPylcAl8RSs7hfHF05TiD_pBiaocXhj64P1fFH4_axmx1sNxJETz0SS0Dy6baBsSxCga1N0utQtNsDdk_2sNh1pz9Octn-G0Z3CPu2q"/>
+</div>
+<div>
+<p class="font-label-sm text-[12px] font-bold text-on-surface leading-tight">Urban Tails</p>
+<p class="text-[10px] text-on-surface-variant font-medium">15 min drive</p>
+</div>
+</div>
+</div>
+<div class="w-8 h-8 bg-surface-container-highest text-on-surface-variant rounded-full flex items-center justify-center shadow-md border-2 border-white group-hover:bg-primary group-hover:text-white group-hover:scale-110 transition-all">
+<span class="material-symbols-outlined text-[16px]" data-icon="content_cut">content_cut</span>
+</div>
+</div>
+<!-- Pin 3: Vet -->
+<div class="absolute top-[30%] left-[65%] -translate-x-1/2 -translate-y-full flex flex-col items-center group z-10 cursor-pointer hover:z-30">
+<div class="w-6 h-6 bg-secondary text-white rounded-full flex items-center justify-center shadow-md border-2 border-white opacity-80 hover:opacity-100 hover:scale-110 transition-all">
+<span class="material-symbols-outlined text-[12px]" data-icon="local_hospital">local_hospital</span>
+</div>
+</div>
+<!-- "Search this area" button overlay -->
+<div class="absolute top-6 left-1/2 -translate-x-1/2 z-10">
+<button class="bg-white/90 backdrop-blur px-4 py-2 rounded-full shadow-md font-label-sm text-[12px] font-bold text-primary flex items-center gap-2 hover:bg-white transition-colors">
+<span class="material-symbols-outlined text-[16px]" data-icon="refresh">refresh</span>
+                    Search this area
+                </button>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-margin-mobile py-2 pb-safe bg-surface-container-highest shadow-[0_-4px_20px_rgba(29,53,87,0.05)] rounded-t-xl h-20">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors rounded-lg p-2 w-16" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="home">home</span>
+<span class="font-label-sm text-[10px] font-medium">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors rounded-lg p-2 w-16" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-label-sm text-[10px] font-medium">AI Chat</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1.5 transform scale-110 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined mb-0.5" data-icon="explore" data-weight="fill" style="font-variation-settings: 'FILL' 1;">explore</span>
+<span class="font-label-sm text-[10px] font-bold">Explore</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors rounded-lg p-2 w-16" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="font-label-sm text-[10px] font-medium">Profile</span>
+</a>
+</nav>
+<script>
+        // Simple interaction for mobile map/list toggle if needed in real app
+        // Currently relying on flex layout to show both or stack based on screen size constraints.
+        // For a true split screen on mobile, we often hide the map and show it via a FAB.
+        // Given instructions: "split-screen layout", implementing responsive flex-row.
+    </script>
+</body></html>
