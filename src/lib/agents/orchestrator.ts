@@ -36,6 +36,17 @@ export type OrchestrateResult = {
   error?: string;
 };
 
+export type OrchestrateProgressEvent =
+  | { type: "routing" }
+  | { type: "routed"; steps: DelegationStepDTO[] }
+  | {
+      type: "step_update";
+      stepIndex: number;
+      status: DelegationStepDTO["status"];
+      tools?: string[];
+    }
+  | { type: "agent_message"; message: OrchestrationMessage };
+
 const BOOKING_INTENT_RE =
   /\b(book(ing)?|appointment|reserve|reservation|schedule)\b/i;
 
@@ -190,24 +201,36 @@ async function runSpecialist(
   }
 }
 
-export async function orchestrateAssistantRequest(args: {
-  message: string;
-  history?: { role: "user" | "assistant"; content: string }[];
-  imageBlob?: Blob | null;
-  lat?: number;
-  lng?: number;
-  recentPlaces?: { id: string; name: string }[];
-  sessionUser: { id: string; email?: string };
-}): Promise<OrchestrateResult> {
+export async function orchestrateAssistantRequest(
+  args: {
+    message: string;
+    history?: { role: "user" | "assistant"; content: string }[];
+    imageBlob?: Blob | null;
+    lat?: number;
+    lng?: number;
+    recentPlaces?: { id: string; name: string }[];
+    sessionUser: { id: string; email?: string };
+  },
+  onProgress?: (event: OrchestrateProgressEvent) => void | Promise<void>,
+): Promise<OrchestrateResult> {
   const message = args.message.trim();
   if (!message && !args.imageBlob) {
     return { steps: [], messages: [], error: "Empty message." };
   }
 
+  await onProgress?.({ type: "routing" });
+
+  const imageBytes = args.imageBlob?.size
+    ? Buffer.from(await args.imageBlob.arrayBuffer())
+    : null;
+  const imageMediaType = args.imageBlob?.type || "image/png";
+  const imageBlobForAgent = () =>
+    imageBytes ? new Blob([imageBytes], { type: imageMediaType }) : null;
+
   const { pet } = await getPetCareContext();
   const petSummary = buildPetProfilePrompt(pet);
   const recentPlaces = args.recentPlaces ?? [];
-  const hasImage = Boolean(args.imageBlob);
+  const hasImage = Boolean(imageBytes);
 
   const { agents, reasoning } = await routeToSpecialists({
     message: message || "Help with my pet.",
@@ -230,6 +253,7 @@ export async function orchestrateAssistantRequest(args: {
 
   if (agents.length === 0) {
     steps[0].status = "running";
+    await onProgress?.({ type: "routed", steps: [...steps] });
 
     const result = await runGeneralAgent({
       message: message || "Share a helpful care tip for my pet today.",
@@ -237,13 +261,21 @@ export async function orchestrateAssistantRequest(args: {
     });
 
     steps[0].status = result.error ? "error" : "done";
+    await onProgress?.({
+      type: "step_update",
+      stepIndex: 0,
+      status: steps[0].status,
+      tools: ["plan"],
+    });
 
     const { content, data } = agentResultToMessageContent("general", result);
-    messages.push({
+    const generalMessage: OrchestrationMessage = {
       agentId: "general",
       content,
       data: { ...data, delegationSteps: steps },
-    });
+    };
+    messages.push(generalMessage);
+    await onProgress?.({ type: "agent_message", message: generalMessage });
 
     return { steps, messages };
   }
@@ -256,11 +288,14 @@ export async function orchestrateAssistantRequest(args: {
     });
   }
 
+  await onProgress?.({ type: "routed", steps: [...steps] });
+
+  // Specialists run concurrently — total latency ≈ slowest agent, not the sum.
   const results = await Promise.all(
     agents.map(async (agentId, index) => {
       const result = await runSpecialist(agentId, {
         message,
-        imageBlob: args.imageBlob,
+        imageBlob: imageBlobForAgent(),
         lat: args.lat,
         lng: args.lng,
         sessionUser: args.sessionUser,
@@ -272,20 +307,29 @@ export async function orchestrateAssistantRequest(args: {
       if (step) {
         step.status = result.error ? "error" : "done";
         step.tools = result.toolsUsed;
+        await onProgress?.({
+          type: "step_update",
+          stepIndex,
+          status: step.status,
+          tools: step.tools,
+        });
       }
 
       const { content, data } = agentResultToMessageContent(agentId, result);
-      return { agentId, content, data };
+      const orchestrationMessage: OrchestrationMessage = {
+        agentId,
+        content,
+        data: index === 0 ? { ...data, delegationSteps: steps } : data,
+      };
+      await onProgress?.({
+        type: "agent_message",
+        message: orchestrationMessage,
+      });
+      return orchestrationMessage;
     }),
   );
 
-  for (const [i, msg] of results.entries()) {
-    messages.push({
-      agentId: msg.agentId,
-      content: msg.content,
-      data: i === 0 ? { ...msg.data, delegationSteps: steps } : msg.data,
-    });
-  }
+  messages.push(...results);
 
   return { steps, messages };
 }

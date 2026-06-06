@@ -83,6 +83,90 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
+type OrchestrateStreamResult = {
+  steps: DelegationStepDTO[];
+  messages: {
+    agentId: string;
+    content: string;
+    data?: ChatMessageData | null;
+  }[];
+};
+
+async function readOrchestrateStream(
+  response: Response,
+  callbacks: {
+    onSteps: (steps: DelegationStepDTO[]) => void;
+    onAgentMessage?: (message: OrchestrateStreamResult["messages"][number]) => void;
+  },
+): Promise<OrchestrateStreamResult> {
+  if (!response.body) {
+    throw new Error("Empty response from assistant.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let steps: DelegationStepDTO[] = [];
+  let messages: OrchestrateStreamResult["messages"] = [];
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const event = JSON.parse(line) as
+        | { type: "routing" }
+        | { type: "routed"; steps: DelegationStepDTO[] }
+        | {
+            type: "step_update";
+            stepIndex: number;
+            status: DelegationStepDTO["status"];
+            tools?: string[];
+          }
+        | {
+            type: "agent_message";
+            message: OrchestrateStreamResult["messages"][number];
+          }
+        | ({ type: "complete" } & OrchestrateStreamResult)
+        | { type: "error"; error: string };
+
+      if (event.type === "routing") {
+        continue;
+      }
+      if (event.type === "routed") {
+        steps = event.steps;
+        callbacks.onSteps(steps);
+      } else if (event.type === "step_update") {
+        steps = steps.map((step, index) =>
+          index === event.stepIndex
+            ? {
+                ...step,
+                status: event.status,
+                tools: event.tools ?? step.tools,
+              }
+            : step,
+        );
+        callbacks.onSteps(steps);
+      } else if (event.type === "agent_message") {
+        messages.push(event.message);
+        callbacks.onAgentMessage?.(event.message);
+      } else if (event.type === "complete") {
+        steps = event.steps;
+        messages = event.messages;
+        callbacks.onSteps(steps);
+      } else if (event.type === "error") {
+        throw new Error(event.error);
+      }
+    }
+  }
+
+  return { steps, messages };
+}
+
 function formatSavedAreaLabel(pet: {
   name: string;
   locationPostalCode?: string | null;
@@ -219,19 +303,38 @@ function AssistantPageInner() {
           method: "POST",
           body: fd,
         });
-        const data = (await res.json()) as {
-          steps?: DelegationStepDTO[];
-          messages?: {
-            agentId: string;
-            content: string;
-            data?: ChatMessageData | null;
-          }[];
-          error?: string;
-        };
 
         if (!res.ok) {
-          throw new Error(data.error || `Request failed (${res.status})`);
+          let message = `Request failed (${res.status})`;
+          try {
+            const err = (await res.json()) as { error?: string };
+            if (err.error) message = err.error;
+          } catch {
+            /* stream or empty body */
+          }
+          throw new Error(message);
         }
+
+        const streamedMessageIds = new Set<string>();
+
+        const data = await readOrchestrateStream(res, {
+          onSteps: setPendingSteps,
+          onAgentMessage: (m) => {
+            const id = `a-${m.agentId}-${Date.now()}-${streamedMessageIds.size}`;
+            streamedMessageIds.add(id);
+            setMessages((prev) => [
+              ...prev,
+              {
+                id,
+                role: "assistant" as const,
+                agentId: m.agentId,
+                content: m.content,
+                data: m.data ?? null,
+                createdAt: new Date().toISOString(),
+              },
+            ]);
+          },
+        });
 
         const assistantMsgs: ChatMessageDTO[] = (data.messages ?? []).map(
           (m, i) => ({
@@ -245,7 +348,9 @@ function AssistantPageInner() {
         );
 
         setPendingSteps(null);
-        setMessages((prev) => [...prev, ...assistantMsgs]);
+        if (streamedMessageIds.size === 0) {
+          setMessages((prev) => [...prev, ...assistantMsgs]);
+        }
 
         await appendChatMessages(opts.sid, [
           {

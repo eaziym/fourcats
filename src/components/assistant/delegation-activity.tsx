@@ -29,6 +29,10 @@ export function DelegationActivity({
 }) {
   if (steps.length === 0) return null;
 
+  const runningSpecialists = steps.filter(
+    (step, index) => index > 0 && step.status === "running",
+  ).length;
+
   return (
     <div className="ml-11 max-w-xl rounded-2xl border border-border/70 bg-muted/30 p-3.5 text-sm shadow-sm">
       <div className="mb-2.5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
@@ -37,6 +41,9 @@ export function DelegationActivity({
         {pending ? (
           <span className="font-normal normal-case tracking-normal text-primary">
             · working
+            {runningSpecialists > 1
+              ? ` (${runningSpecialists} specialists in parallel)`
+              : null}
           </span>
         ) : null}
       </div>

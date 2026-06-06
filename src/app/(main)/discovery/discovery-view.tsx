@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pill, SpotlightCard } from "@/components/pet-care/primitives";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Spinner } from "@/components/ui/spinner";
 import type {
+  DiscoveryData,
   DiscoveryOrigin,
   PlaceDTO,
   ProductDTO,
@@ -162,17 +163,28 @@ export function DiscoveryView({
   food: Promise<ProductDTO[]>;
   pet: PetSummary;
 }) {
-  const groomers = usePromise(groomersPromise);
-  const vets = usePromise(vetsPromise);
-  const petStores = usePromise(petStoresPromise);
-  const cafes = usePromise(cafesPromise);
-  const food = usePromise(foodPromise);
+  const initialGroomers = usePromise(groomersPromise);
+  const initialVets = usePromise(vetsPromise);
+  const initialPetStores = usePromise(petStoresPromise);
+  const initialCafes = usePromise(cafesPromise);
+  const initialFood = usePromise(foodPromise);
+  const [discoveryData, setDiscoveryData] = useState<DiscoveryData | null>(
+    null,
+  );
+  const [locating, setLocating] = useState(false);
+  const [locationNotice, setLocationNotice] = useState<string | null>(null);
 
   const [tab, setTab] = useState<Tab>("groomer");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [radiusKm, setRadiusKm] = useState(DEFAULT_RADIUS_KM);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const currentOrigin = discoveryData?.origin ?? origin;
+  const groomers = discoveryData?.groomers ?? initialGroomers;
+  const vets = discoveryData?.vets ?? initialVets;
+  const petStores = discoveryData?.petStores ?? initialPetStores;
+  const cafes = discoveryData?.cafes ?? initialCafes;
+  const food = discoveryData?.food ?? initialFood;
 
   const refreshWithGps = useCallback(() => {
     if (!("geolocation" in navigator)) {
@@ -203,7 +215,7 @@ export function DiscoveryView({
       },
       (geoError) => {
         setLocating(false);
-        const savedLabel = initialData.origin?.label;
+        const savedLabel = origin?.label;
         if (savedLabel) {
           setLocationNotice(
             geoError.code === 1
@@ -220,7 +232,7 @@ export function DiscoveryView({
       },
       { enableHighAccuracy: false, timeout: 15000, maximumAge: 60_000 },
     );
-  }, [initialData.origin?.label]);
+  }, [origin?.label]);
 
   useEffect(() => {
     refreshWithGps();
@@ -256,11 +268,11 @@ export function DiscoveryView({
     if (isFood || !activePlaces) return [];
     const matched = q
       ? activePlaces.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.neighbourhood?.toLowerCase().includes(q) ||
-          p.serviceTags.some((t) => t.toLowerCase().includes(q)),
-      )
+          (p) =>
+            p.name.toLowerCase().includes(q) ||
+            p.neighbourhood?.toLowerCase().includes(q) ||
+            p.serviceTags.some((t) => t.toLowerCase().includes(q)),
+        )
       : activePlaces;
     return [...matched].sort(sortByDistance);
   }, [isFood, activePlaces, q]);
@@ -298,11 +310,11 @@ export function DiscoveryView({
     ? (visibleFood.find((p) => p.id === selectedId) ?? null)
     : null;
 
-  const near = origin?.label ?? "Singapore";
+  const near = currentOrigin?.label ?? "Singapore";
   const activeLabel = TABS.find((t) => t.id === tab)?.label.toLowerCase() ?? "";
   const resultLabel = isFood ? "food" : activeLabel;
   const inRadiusCount =
-    !isFood && origin && activePlaces
+    !isFood && currentOrigin && activePlaces
       ? filteredPlaces.filter((p) => isWithinRadius(p, radiusKm)).length
       : 0;
 
@@ -335,15 +347,15 @@ export function DiscoveryView({
               : `Trusted ${activeLabel} ${near}.`}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            {discoveryData.origin ? (
+            {currentOrigin ? (
               <Pill
                 className={cn(
-                  discoveryData.origin.source === "gps" &&
-                  "border-primary/30 bg-primary/10 text-primary",
+                  currentOrigin.source === "gps" &&
+                    "border-primary/30 bg-primary/10 text-primary",
                 )}
               >
                 <MapPin className="size-3.5" />
-                {discoveryData.origin.label}
+                {currentOrigin.label}
               </Pill>
             ) : locating ? (
               <Pill>
@@ -363,7 +375,9 @@ export function DiscoveryView({
             </Button>
           </div>
           {locationNotice ? (
-            <p className="mt-2 text-xs text-muted-foreground">{locationNotice}</p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {locationNotice}
+            </p>
           ) : null}
           <div className="relative mt-4">
             <Search className="absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground" />
@@ -381,10 +395,7 @@ export function DiscoveryView({
 
           <div className="mt-4 flex items-center gap-3 rounded-xl border border-primary/25 bg-gradient-to-r from-primary/10 to-card p-2">
             <Avatar className="size-9">
-              <AvatarImage
-                alt={pet.name}
-                src={petAvatarSrc(pet)}
-              />
+              <AvatarImage alt={pet.name} src={petAvatarSrc(pet)} />
               <AvatarFallback>
                 {pet.name.slice(0, 1).toUpperCase()}
               </AvatarFallback>
@@ -466,7 +477,7 @@ export function DiscoveryView({
             </div>
           )}
 
-          {!isFood && origin ? (
+          {!isFood && currentOrigin ? (
             <RadiusControl
               count={inRadiusCount}
               label={activeLabel}
@@ -526,12 +537,12 @@ export function DiscoveryView({
       <section className={cn("relative h-[55vh] min-w-0 flex-1", PANEL_H)}>
         <DiscoveryMap
           places={isTabLoading ? [] : visiblePlaces}
-          origin={origin}
+          origin={currentOrigin}
           radiusKm={radiusKm}
           selectedId={selectedId}
           onSelect={setSelectedId}
         />
-        {!isFood && discoveryData.origin?.source === "gps" ? (
+        {!isFood && currentOrigin?.source === "gps" ? (
           <div className="pointer-events-none absolute left-1/2 top-4 z-[1000] -translate-x-1/2 rounded-full bg-card/90 px-4 py-1.5 text-xs font-medium text-primary shadow backdrop-blur">
             Blue dot = your current location
           </div>
@@ -564,13 +575,7 @@ export function DiscoveryView({
 // Per-tab loading skeleton
 // ---------------------------------------------------------------------------
 
-function TabLoadingSkeleton({
-  label,
-  near,
-}: {
-  label: string;
-  near: string;
-}) {
+function TabLoadingSkeleton({ label, near }: { label: string; near: string }) {
   return (
     <>
       <div className="flex items-center gap-2.5 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
@@ -625,9 +630,9 @@ function ListingCard({
         className={cn(
           "w-full overflow-hidden transition-colors",
           inRadius &&
-          "ring-1 ring-primary/40 shadow-[0_10px_28px_rgba(159,58,76,0.14)]",
+            "ring-1 ring-primary/40 shadow-[0_10px_28px_rgba(159,58,76,0.14)]",
           selected &&
-          "bg-gradient-to-r from-card to-primary/5 ring-1 ring-primary/40",
+            "bg-gradient-to-r from-card to-primary/5 ring-1 ring-primary/40",
         )}
       >
         <CardContent className="flex min-w-0 gap-4 p-4">
@@ -691,7 +696,7 @@ function ProductCard({
         className={cn(
           "w-full overflow-hidden transition-colors",
           selected &&
-          "bg-gradient-to-r from-card to-primary/5 ring-1 ring-primary/40",
+            "bg-gradient-to-r from-card to-primary/5 ring-1 ring-primary/40",
         )}
       >
         <CardContent className="flex min-w-0 gap-4 p-4">
