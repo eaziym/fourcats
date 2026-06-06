@@ -2,6 +2,12 @@ import { extractAllTextOutput, run, user as userMessage } from "@openai/agents";
 import { generateText, type ModelMessage, stepCountIs } from "ai";
 import { NextResponse } from "next/server";
 import {
+  type BookingAgentContext,
+  buildBookingAgent,
+  createBookingDraftDirect,
+  resolvePlaceId,
+} from "@/lib/agents/booking-agent";
+import {
   buildFoodAgent,
   type FoodAgentContext,
   type FoodProduct,
@@ -17,7 +23,9 @@ import { buildVetAgent, type VetAgentContext } from "@/lib/agents/vet-agent";
 import { buildAssistantSystemPrompt, buildPetTools } from "@/lib/ai/pet-tools";
 import { getModel, SYSTEM_PROMPT } from "@/lib/ai/providers";
 import { getUser } from "@/lib/auth/server";
+import type { BookingDraft } from "@/lib/booking/types";
 import { downscaleForVisionPreview } from "@/lib/image/downscale-for-vision";
+import { enrichPlaceCards } from "@/lib/pet-data/enrich-places";
 import { buildPetProfilePrompt, speciesToPetType } from "@/lib/pet-data/format";
 import { postalToLatLng } from "@/lib/pet-data/search";
 import { getPetCareContext } from "@/lib/pet-queries";
@@ -79,6 +87,10 @@ export async function POST(
 
   if (agentId === "vet") {
     return handleVetAgent(req);
+  }
+
+  if (agentId === "booking") {
+    return handleBookingAgent(req, sessionUser);
   }
 
   if (agentId !== "meme") {
@@ -494,7 +506,7 @@ async function handleVetAgent(req: Request): Promise<Response> {
 
     const assistantText = extractAllTextOutput(result.newItems).trim();
     const ctx = result.runContext.context as VetAgentContext;
-    const places = Array.from(ctx.foundPlaces.values());
+    const places = await enrichPlaceCards(Array.from(ctx.foundPlaces.values()));
     const toolError = parseToolError(
       result.newItems as { type: string; output?: unknown }[],
     );
@@ -564,7 +576,7 @@ async function handleGroomingAgent(req: Request): Promise<Response> {
 
     const assistantText = extractAllTextOutput(result.newItems).trim();
     const ctx = result.runContext.context as GroomingAgentContext;
-    const places = Array.from(ctx.foundPlaces.values());
+    const places = await enrichPlaceCards(Array.from(ctx.foundPlaces.values()));
     const toolError = parseToolError(
       result.newItems as { type: string; output?: unknown }[],
     );
@@ -576,6 +588,134 @@ async function handleGroomingAgent(req: Request): Promise<Response> {
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Agent run failed";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
+type SessionUser = NonNullable<Awaited<ReturnType<typeof getUser>>>;
+
+function bookingSuccessText(draft: BookingDraft): string {
+  if (draft.channel === "email" && draft.mailtoUrl) {
+    return `I've prepared a booking email to **${draft.placeName}** (${draft.toEmail}). Tap **Open in email** below to review and send it from your mail app — that's the real reservation request.`;
+  }
+  if (draft.channel === "calendly" && draft.bookingUrl) {
+    return `**${draft.placeName}** accepts online bookings. Use the **Book online** button below to complete your reservation.`;
+  }
+  if (draft.channel === "phone" && draft.phone) {
+    return `**${draft.placeName}** doesn't have a booking email on file. Please **call them** using the button below to make your reservation.`;
+  }
+  return `I saved your booking request for **${draft.placeName}**, but couldn't find email, online booking, or phone contact details. Try their website or Google Maps listing.`;
+}
+
+async function handleBookingAgent(
+  req: Request,
+  sessionUser: SessionUser,
+): Promise<Response> {
+  let body: {
+    message?: string;
+    servicePlaceId?: string;
+    requestedService?: string;
+    requestedTimeWindow?: string;
+    recentPlaces?: { id: string; name: string }[];
+  } = {};
+  try {
+    body = (await req.json()) as typeof body;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const message = typeof body.message === "string" ? body.message.trim() : "";
+  const recentPlaces = Array.isArray(body.recentPlaces)
+    ? body.recentPlaces.filter((p) => p?.id && p?.name)
+    : [];
+  const presetPlaceId =
+    typeof body.servicePlaceId === "string" ? body.servicePlaceId : undefined;
+
+  const { pet } = await getPetCareContext();
+  const profileText = buildPetProfilePrompt(pet);
+
+  const runContext: BookingAgentContext = {
+    user: sessionUser,
+    pet,
+    recentPlaces,
+    presetPlaceId,
+  };
+
+  if (presetPlaceId) {
+    try {
+      const draft = await createBookingDraftDirect(runContext, {
+        servicePlaceId: presetPlaceId,
+        requestedService: body.requestedService,
+        requestedTimeWindow: body.requestedTimeWindow,
+        notes: message || null,
+      });
+      return NextResponse.json({
+        assistantText: bookingSuccessText(draft),
+        bookingDraft: draft,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Booking failed";
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
+  }
+
+  if (!message) {
+    return NextResponse.json(
+      { error: "Please describe what you'd like to book." },
+      { status: 400 },
+    );
+  }
+
+  const resolvedId = resolvePlaceId(message, recentPlaces);
+  if (resolvedId) {
+    try {
+      const draft = await createBookingDraftDirect(runContext, {
+        servicePlaceId: resolvedId,
+        requestedService: body.requestedService,
+        requestedTimeWindow: body.requestedTimeWindow,
+        notes: message,
+      });
+      return NextResponse.json({
+        assistantText: bookingSuccessText(draft),
+        bookingDraft: draft,
+      });
+    } catch {
+      /* fall through to LLM agent */
+    }
+  }
+
+  const recentPlacesNote =
+    recentPlaces.length > 0
+      ? recentPlaces.map((p) => `- ${p.name} (id: ${p.id})`).join("\n")
+      : "No places in recent context — ask the user which groomer or vet they mean.";
+  const presetNote =
+    "No preset place — infer from the user's message and recent places.";
+
+  try {
+    const agent = buildBookingAgent(profileText, recentPlacesNote, presetNote);
+    const result = await run(agent, message, {
+      context: runContext,
+      maxTurns: 8,
+    });
+
+    const assistantText = extractAllTextOutput(result.newItems).trim();
+    const ctx = result.runContext.context as BookingAgentContext;
+    const draft = ctx.draft;
+    const toolError = parseToolError(
+      result.newItems as { type: string; output?: unknown }[],
+    );
+
+    return NextResponse.json({
+      assistantText:
+        assistantText ||
+        (draft ? bookingSuccessText(draft) : undefined) ||
+        toolError ||
+        "Tell me which groomer or vet you'd like to book, and your preferred date/time.",
+      bookingDraft: draft,
+      toolError,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Booking agent failed";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

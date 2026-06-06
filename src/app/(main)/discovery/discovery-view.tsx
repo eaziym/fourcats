@@ -2,6 +2,7 @@
 
 import {
   Calendar,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Coffee,
@@ -280,7 +281,7 @@ export function DiscoveryView({
               const count = tabCount(data, t.id);
               const activeTab = tab === t.id;
               return (
-                <button
+                <Button
                   className={cn(
                     "flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors",
                     activeTab
@@ -306,7 +307,7 @@ export function DiscoveryView({
                   >
                     {count}
                   </span>
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -379,12 +380,14 @@ export function DiscoveryView({
         ) : null}
         {selectedPlace ? (
           <PlaceDetail
+            key={selectedPlace.id}
             place={selectedPlace}
             onClose={() => setSelectedId(null)}
           />
         ) : null}
         {selectedProduct ? (
           <ProductDetail
+            key={selectedProduct.id}
             product={selectedProduct}
             onClose={() => setSelectedId(null)}
           />
@@ -640,9 +643,11 @@ function FloatingShell({
   children: React.ReactNode;
   onClose: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+
   return (
     <div className="pointer-events-none absolute inset-x-3 bottom-3 z-[1000] md:inset-x-6 md:bottom-6">
-      <div className="pointer-events-auto relative mx-auto max-h-[60%] max-w-xl overflow-y-auto rounded-2xl border border-border bg-card/95 p-5 shadow-xl backdrop-blur md:p-6">
+      <div className="pointer-events-auto relative mx-auto max-w-xl rounded-2xl border border-border bg-card/95 p-5 shadow-xl backdrop-blur md:p-6">
         <button
           type="button"
           onClick={onClose}
@@ -651,7 +656,27 @@ function FloatingShell({
         >
           <X className="size-4" />
         </button>
-        {children}
+        <div
+          className={cn(
+            "transition-[max-height] duration-300 ease-in-out",
+            expanded ? "max-h-[60vh] overflow-y-auto" : "max-h-48 overflow-hidden",
+          )}
+        >
+          {children}
+        </div>
+        {!expanded && (
+          <div className="relative">
+            <div className="pointer-events-none absolute -top-8 left-0 right-0 h-8 bg-linear-to-t from-card/95 to-transparent" />
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              Show more
+              <ChevronDown className="size-3.5" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -688,7 +713,7 @@ function PlaceDetail({
       {place.topReview ? (
         <div className="mt-3 rounded-xl border border-border bg-muted/40 p-3">
           <Quote className="size-3.5 text-primary" />
-          <p className="mt-1 line-clamp-4 text-sm leading-relaxed text-foreground">
+          <p className="mt-1 text-sm leading-relaxed text-foreground">
             {place.topReview.text}
           </p>
         </div>

@@ -8,6 +8,7 @@ import type {
   ChatSessionSummary,
 } from "@/lib/chat/types";
 import { prisma } from "@/lib/db";
+import { enrichPlaceCards } from "@/lib/pet-data/enrich-places";
 
 function titleFromText(text: string): string {
   const clean = text.trim().replace(/\s+/g, " ");
@@ -60,14 +61,25 @@ export async function loadChatSession(
     where: { sessionId },
     orderBy: { createdAt: "asc" },
   });
-  return rows.map((r) => ({
-    id: r.id,
-    role: r.role === "user" ? "user" : "assistant",
-    agentId: r.agentId,
-    content: r.content,
-    data: (r.data as ChatMessageData | null) ?? null,
-    createdAt: r.createdAt.toISOString(),
-  }));
+
+  const messages = await Promise.all(
+    rows.map(async (r) => {
+      const raw = (r.data as ChatMessageData | null) ?? null;
+      const data =
+        raw?.places && raw.places.length > 0
+          ? { ...raw, places: await enrichPlaceCards(raw.places) }
+          : raw;
+      return {
+        id: r.id,
+        role: r.role === "user" ? ("user" as const) : ("assistant" as const),
+        agentId: r.agentId,
+        content: r.content,
+        data,
+        createdAt: r.createdAt.toISOString(),
+      };
+    }),
+  );
+  return messages;
 }
 
 type IncomingMessage = {
