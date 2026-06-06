@@ -1,34 +1,44 @@
-import { ImagePlus, Loader2, SendHorizontal } from "lucide-react";
+import { ImagePlus, Loader2, Mic, SendHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function ChatInput({
   input,
   busy,
+  petName,
   onInputChange,
   onSubmit,
 }: {
   input: string;
   busy: boolean;
+  petName: string;
   onInputChange: (value: string) => void;
   onSubmit: (e: React.FormEvent) => void;
 }) {
+  const placeholder =
+    petName === "your pet"
+      ? "Ask about your pet's health, diet, or local services..."
+      : `Ask about ${petName}'s health, diet, or local services...`;
+
   return (
-    <div className="border-t border-border bg-linear-to-t from-background via-background p-5 md:px-10">
+    <div className="border-t border-[#dac0c3]/30 bg-gradient-to-t from-background via-background to-transparent p-5 md:px-10">
       <form
         onSubmit={onSubmit}
-        className="mx-auto flex max-w-4xl items-center gap-4 rounded-full border border-border bg-card px-5 py-3 shadow-md"
+        className="mx-auto flex max-w-3xl items-center gap-2 rounded-full border border-[#dac0c3]/50 bg-white/70 px-3 py-1.5 shadow-lg backdrop-blur-md transition-colors focus-within:border-primary dark:bg-card/70"
       >
+        <span className="pl-1 text-muted-foreground/50" aria-hidden>
+          <Mic className="size-5" />
+        </span>
         <input
           type="text"
           value={input}
           onChange={(e) => onInputChange(e.target.value)}
-          placeholder="Ask about Mochi's health, diet, or local services..."
-          className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none"
+          placeholder={placeholder}
+          className="min-w-0 flex-1 bg-transparent py-3 text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
           disabled={busy}
         />
         <Button
           type="submit"
-          className="size-11 rounded-full disabled:opacity-50"
+          className="size-10 shrink-0 rounded-full bg-primary text-primary-foreground shadow-md transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
           size="icon"
           disabled={busy || !input.trim()}
         >
@@ -61,10 +71,10 @@ export function MemeChatInput({
   onSubmit: (e: React.FormEvent) => void;
 }) {
   return (
-    <div className="border-t border-border bg-linear-to-t from-background via-background p-5 md:px-10">
+    <div className="border-t border-[#dac0c3]/30 bg-gradient-to-t from-background via-background to-transparent p-5 md:px-10">
       <form
         onSubmit={onSubmit}
-        className="mx-auto flex max-w-4xl flex-col gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-md sm:flex-row sm:items-center"
+        className="mx-auto flex max-w-4xl flex-col gap-3 rounded-2xl border border-[#dac0c3]/50 bg-white/70 px-4 py-3 shadow-lg backdrop-blur-md sm:flex-row sm:items-center dark:bg-card/70"
       >
         <input
           ref={fileInputRef}
@@ -76,7 +86,7 @@ export function MemeChatInput({
         <Button
           type="button"
           variant="outline"
-          className="shrink-0"
+          className="shrink-0 border-[#dac0c3]/80"
           onClick={() => fileInputRef.current?.click()}
           disabled={busy}
         >
@@ -93,7 +103,7 @@ export function MemeChatInput({
         />
         <Button
           type="submit"
-          className="shrink-0 rounded-full disabled:opacity-50"
+          className="shrink-0 rounded-full bg-primary text-primary-foreground shadow-md disabled:opacity-50"
           size="icon"
           disabled={busy || !file}
         >
