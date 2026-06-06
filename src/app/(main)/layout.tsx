@@ -1,4 +1,6 @@
+import { PetCareProvider } from "@/components/pet-care/pet-care-provider";
 import { ensureAppAccess } from "@/lib/auth/server";
+import { getPetCareContext } from "@/lib/pet-queries";
 
 export default async function MainAppLayout({
   children,
@@ -6,5 +8,6 @@ export default async function MainAppLayout({
   children: React.ReactNode;
 }) {
   await ensureAppAccess();
-  return children;
+  const petContext = await getPetCareContext();
+  return <PetCareProvider value={petContext}>{children}</PetCareProvider>;
 }

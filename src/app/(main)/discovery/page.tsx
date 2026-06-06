@@ -9,18 +9,22 @@ import {
   Star,
   Tag,
 } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { Pill, SpotlightCard } from "@/components/pet-care/primitives";
+import { PetCareShell } from "@/components/pet-care/shell";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import {
   discoveryFilters,
   groomerInterior,
-  mochiPortrait,
+  petPlaceholderImage,
 } from "@/lib/pet-data";
-import { Pill, SpotlightCard } from "@/components/pet-care/primitives";
-import { PetCareShell } from "@/components/pet-care/shell";
+import type { PetDTO } from "@/lib/pet-queries";
+import { getPetCareContext } from "@/lib/pet-queries";
+import { cn } from "@/lib/utils";
 
 const listings = [
   {
@@ -39,9 +43,12 @@ const listings = [
   },
 ];
 
-function ListPanel() {
+function ListPanel({ pet }: { pet: PetDTO }) {
+  const near =
+    pet.locationLabel?.trim() || pet.locationPostalCode?.trim() || "Singapore";
+
   return (
-    <section className="z-10 flex w-full flex-col border-r border-border bg-card shadow-sm md:h-screen md:w-[500px]">
+    <section className="z-10 flex min-h-0 w-full flex-col border-r border-border bg-card shadow-sm md:h-full md:w-[500px] md:shrink-0">
       <div className="border-b border-border p-5 md:p-8">
         <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
           Local discovery
@@ -53,7 +60,7 @@ function ListPanel() {
           <Search className="absolute top-1/2 left-4 size-6 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="h-12 rounded-xl pl-12 pr-14 text-base"
-            placeholder="Find services near Tampines…"
+            placeholder={`Find services near ${near}…`}
           />
           <button
             className="absolute top-1/2 right-3 -translate-y-1/2 rounded-lg bg-muted p-2 text-muted-foreground transition-colors hover:bg-muted/80"
@@ -62,7 +69,7 @@ function ListPanel() {
             <SlidersHorizontal className="size-5" />
           </button>
         </div>
-        <MochiFilterBar />
+        <MochiFilterBar pet={pet} />
         <FilterChips />
       </div>
 
@@ -70,31 +77,37 @@ function ListPanel() {
         {listings.map((listing) => (
           <ListingCard key={listing.name} {...listing} />
         ))}
-        <SpecialOfferBanner />
+        <SpecialOfferBanner area={near} />
       </div>
     </section>
   );
 }
 
-function MochiFilterBar() {
+function MochiFilterBar({ pet }: { pet: PetDTO }) {
+  const avatarSrc = petPlaceholderImage(pet.species);
+  const hint =
+    pet.medicalConditions.length > 0
+      ? `Prioritising: ${pet.medicalConditions.slice(0, 2).join(", ")}`
+      : "Personalised from your saved profile";
+
   return (
     <div className="mt-4 flex items-center gap-3 rounded-xl border border-primary/25 bg-gradient-to-r from-primary/10 to-card p-2">
       <Avatar className="size-9">
-        <AvatarImage alt="Mochi" src={mochiPortrait} />
-        <AvatarFallback>M</AvatarFallback>
+        <AvatarImage alt={pet.name} src={avatarSrc} />
+        <AvatarFallback>{pet.name.slice(0, 1).toUpperCase()}</AvatarFallback>
       </Avatar>
       <div>
-        <p className="text-sm font-semibold text-foreground">Top picks for Mochi</p>
-        <p className="text-xs text-muted-foreground">
-          Filtered for sensitive skin expertise
+        <p className="text-sm font-semibold text-foreground">
+          Top picks for {pet.name}
         </p>
+        <p className="text-xs text-muted-foreground">{hint}</p>
       </div>
-      <button
+      <Link
         className="ml-auto px-2 text-sm font-semibold text-primary"
-        type="button"
+        href="/profiles"
       >
-        Edit
-      </button>
+        Edit profile
+      </Link>
     </div>
   );
 }
@@ -130,9 +143,7 @@ function ListingCard({
 }: (typeof listings)[number]) {
   return (
     <SpotlightCard
-      className={cn(
-        selected && "bg-gradient-to-r from-card to-primary/5",
-      )}
+      className={cn(selected && "bg-gradient-to-r from-card to-primary/5")}
     >
       <CardContent className="flex gap-5 p-4">
         <div className="relative">
@@ -175,7 +186,7 @@ function ListingCard({
   );
 }
 
-function SpecialOfferBanner() {
+function SpecialOfferBanner({ area }: { area: string }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-chart-2/30 to-chart-3/25 p-6 text-foreground dark:from-chart-2/20 dark:to-chart-3/15">
       <Pill className="mb-4 rounded-md border-0 bg-foreground text-background">
@@ -183,7 +194,7 @@ function SpecialOfferBanner() {
       </Pill>
       <h3 className="text-2xl font-semibold">First grooming 20% off</h3>
       <p className="mt-2 text-muted-foreground">
-        Available at selected partners near Tampines.
+        Available at selected partners near {area}.
       </p>
       <Button className="mt-5 rounded-full" variant="default">
         Claim offer
@@ -195,7 +206,7 @@ function SpecialOfferBanner() {
 
 function MapPanel() {
   return (
-    <section className="relative h-[520px] flex-1 overflow-hidden bg-gradient-to-br from-chart-3/40 via-chart-2/30 to-primary/20 md:h-screen dark:from-chart-3/20 dark:via-chart-2/15 dark:to-primary/10">
+    <section className="relative h-[520px] min-h-0 flex-1 overflow-hidden bg-gradient-to-br from-chart-3/40 via-chart-2/30 to-primary/20 md:h-full dark:from-chart-3/20 dark:via-chart-2/15 dark:to-primary/10">
       <div className="absolute inset-0 opacity-40 [background-image:linear-gradient(35deg,transparent_49%,color-mix(in_oklch,var(--card),transparent_60%)_50%,transparent_51%),linear-gradient(118deg,transparent_49%,color-mix(in_oklch,var(--card),transparent_60%)_50%,transparent_51%),linear-gradient(90deg,transparent_49%,color-mix(in_oklch,var(--card),transparent_60%)_50%,transparent_51%)] [background-size:140px_110px,190px_160px,86px_86px]" />
       <Button
         className="absolute top-8 left-1/2 z-10 -translate-x-1/2 rounded-full shadow-lg"
@@ -205,7 +216,11 @@ function MapPanel() {
         Search this area
       </Button>
       <div className="absolute top-6 right-5 z-10 grid gap-3">
-        <Button className="size-12 rounded-full shadow-md" size="icon" variant="secondary">
+        <Button
+          className="size-12 rounded-full shadow-md"
+          size="icon"
+          variant="secondary"
+        >
           <Cross className="size-6" />
         </Button>
         <div className="grid overflow-hidden rounded-full border border-border bg-card shadow-md">
@@ -239,11 +254,16 @@ function MapPanel() {
   );
 }
 
-export default function DiscoveryPage() {
+export default async function DiscoveryPage() {
+  const { pet } = await getPetCareContext();
+  if (!pet) {
+    redirect("/onboarding");
+  }
+
   return (
     <PetCareShell active="discovery">
-      <main className="flex min-h-screen flex-col bg-background md:ml-64 md:flex-row">
-        <ListPanel />
+      <main className="flex min-h-0 flex-1 flex-col bg-background md:flex-row">
+        <ListPanel pet={pet} />
         <MapPanel />
       </main>
     </PetCareShell>
