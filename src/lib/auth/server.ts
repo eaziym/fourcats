@@ -1,50 +1,41 @@
-// import "server-only";
+import "server-only";
 
-import { betterAuth } from "better-auth";
-import { prismaAdapter } from "better-auth/adapters/prisma";
-import { nextCookies, toNextJsHandler } from "better-auth/next-js";
-import { admin, organization } from "better-auth/plugins";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { createClient } from "@/lib/supabase/server";
 
-export const auth = betterAuth({
-  database: prismaAdapter(prisma, {
-    provider: "postgresql",
-  }),
-  plugins: [
-    admin(),
-    organization({
-      allowUserToCreateOrganization: async (user) => {
-        return true;
-      },
-    }),
-    nextCookies(),
-  ],
-  emailAndPassword: {
-    enabled: true,
-  },
-  socialProviders: {
-    // github: {
-    //   clientId: process.env.GITHUB_CLIENT_ID as string,
-    //   clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
-    // },
-  },
-});
+export async function getUser() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+}
 
-export const getSession = async () => {
-  return await auth.api.getSession({
-    headers: await headers(),
-  });
-};
-
-export const isLoggedInOrRedirect = async () => {
-  const session = await getSession();
-
-  if (!session?.user) {
-    redirect("/signin");
+export async function getUserOrRedirect() {
+  const user = await getUser();
+  if (!user) {
+    redirect("/login");
   }
-  return session;
-};
+  return user;
+}
 
-export const NextJsAuthHandler = toNextJsHandler(auth);
+/** Dashboard and main app: must be signed in and have at least one pet profile. */
+export async function ensureAppAccess() {
+  const user = await getUserOrRedirect();
+  const count = await prisma.pet.count({ where: { userId: user.id } });
+  if (count === 0) {
+    redirect("/onboarding");
+  }
+  return user;
+}
+
+/** Onboarding: signed in only; send users who already have pets to home. */
+export async function ensureOnboardingAccess() {
+  const user = await getUserOrRedirect();
+  const count = await prisma.pet.count({ where: { userId: user.id } });
+  if (count > 0) {
+    redirect("/");
+  }
+  return user;
+}

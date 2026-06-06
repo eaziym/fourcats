@@ -16,6 +16,7 @@ import {
   petPortrait,
 } from "@/lib/pet-data";
 import { BrandWordmark } from "./brand-wordmark";
+import { SignOutButton } from "./sign-out-button";
 
 function SidebarContent({
   active,
@@ -96,6 +97,7 @@ function SidebarContent({
             <HelpCircle className="size-5" />
             Support
           </button>
+          <SignOutButton onSignOut={onNavigate} />
         </div>
       </div>
     </>
