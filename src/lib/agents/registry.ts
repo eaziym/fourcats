@@ -1,0 +1,25 @@
+/**
+ * Agent catalog for the AI Assistant tab. Metadata only — safe to import from client components.
+ * Server-side agent definitions live next to this file (e.g. `meme-agent.ts`).
+ */
+export const ASSISTANT_AGENTS = [
+  {
+    id: "general",
+    label: "Pet assistant",
+    description: "Health, grooming, and lifestyle Q&A for your pet.",
+    kind: "chat" as const,
+  },
+  {
+    id: "meme",
+    label: "Meme agent",
+    description: "Upload a pet photo and get a generated meme image.",
+    kind: "meme" as const,
+  },
+] as const;
+
+export type AssistantAgentId = (typeof ASSISTANT_AGENTS)[number]["id"];
+export type AssistantAgentKind = (typeof ASSISTANT_AGENTS)[number]["kind"];
+
+export function getAssistantAgent(id: string) {
+  return ASSISTANT_AGENTS.find((a) => a.id === id);
+}
