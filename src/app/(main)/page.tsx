@@ -27,6 +27,7 @@ import { petPlaceholderImage } from "@/lib/pet-data";
 import type { PetCareLogDTO, PetDTO } from "@/lib/pet-queries";
 import { getPetCareContext } from "@/lib/pet-queries";
 import { cn } from "@/lib/utils";
+import { DailyCareLogForm } from "./daily-care-log-form";
 
 function timeGreeting() {
   const h = new Date().getHours();
@@ -121,7 +122,7 @@ function Dashboard({
           />
           <div className="grid gap-6">
             <AiCareAlert petName={pet.name} />
-            <DailyCareLog logs={pet.careLogs} />
+            <DailyCareLog logs={pet.careLogs} pet={pet} />
           </div>
           <KibbleReminder
             petName={pet.name}
@@ -236,7 +237,7 @@ function AiCareAlert({ petName }: { petName: string }) {
   );
 }
 
-function DailyCareLog({ logs }: { logs: PetCareLogDTO[] }) {
+function DailyCareLog({ logs, pet }: { logs: PetCareLogDTO[]; pet: PetDTO }) {
   return (
     <SpotlightCard className="border-0">
       <CardContent className="p-8">
@@ -244,44 +245,52 @@ function DailyCareLog({ logs }: { logs: PetCareLogDTO[] }) {
           <h3 className="text-2xl font-semibold tracking-tight">
             Daily care log
           </h3>
-          <Button className="text-primary" size="sm" variant="ghost" asChild>
-            <a href="/assistant">Log in assistant</a>
-          </Button>
+          <Pill className="bg-muted text-muted-foreground">Today</Pill>
         </div>
-        {logs.length === 0 ? (
-          <p className="text-muted-foreground">
-            No care logs yet. Ask the AI assistant to help you record meals,
-            mood, weight, or symptoms.
-          </p>
-        ) : (
-          <AnimatedList className="grid gap-7">
-            {logs.map((log) => {
-              const row = careLogPresentation(log);
-              const Icon = row.Icon;
-              return (
-                <div className="flex items-center gap-5" key={log.id}>
-                  <div
-                    className={cn(
-                      "flex size-10 shrink-0 items-center justify-center rounded-full",
-                      row.tone,
-                    )}
-                  >
-                    <Icon className="size-4" />
+        <DailyCareLogForm petId={pet.id} petName={pet.name} />
+        <div className="mt-8 border-t border-border pt-7">
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <p className="text-sm font-semibold text-muted-foreground">
+              Recent history
+            </p>
+            <Button className="text-primary" size="sm" variant="ghost" asChild>
+              <a href="/assistant">Ask assistant</a>
+            </Button>
+          </div>
+          {logs.length === 0 ? (
+            <p className="text-muted-foreground">
+              No care logs yet. Save today&apos;s first check-in.
+            </p>
+          ) : (
+            <AnimatedList className="grid gap-6">
+              {logs.map((log) => {
+                const row = careLogPresentation(log);
+                const Icon = row.Icon;
+                return (
+                  <div className="flex items-center gap-5" key={log.id}>
+                    <div
+                      className={cn(
+                        "flex size-10 shrink-0 items-center justify-center rounded-full",
+                        row.tone,
+                      )}
+                    >
+                      <Icon className="size-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={cn("font-medium")}>{row.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {row.subtitle}
+                      </p>
+                    </div>
+                    <span className="text-sm tabular-nums text-muted-foreground">
+                      {row.time}
+                    </span>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className={cn("font-medium")}>{row.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {row.subtitle}
-                    </p>
-                  </div>
-                  <span className="text-sm tabular-nums text-muted-foreground">
-                    {row.time}
-                  </span>
-                </div>
-              );
-            })}
-          </AnimatedList>
-        )}
+                );
+              })}
+            </AnimatedList>
+          )}
+        </div>
       </CardContent>
     </SpotlightCard>
   );

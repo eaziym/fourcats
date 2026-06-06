@@ -2,19 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { createClient } from "@/lib/supabase/server";
-
-const petSchema = z.object({
-  name: z.string().trim().min(1, "Name is required"),
-  species: z.enum(["dog", "cat"]),
-  breed: z
-    .string()
-    .trim()
-    .transform((s) => (s === "" ? undefined : s))
-    .optional(),
-});
+import { buildCreatePetData, parseCreatePetFormData } from "./pet-form";
 
 export type CreatePetState = { error?: string } | null;
 
@@ -30,11 +20,7 @@ export async function createFirstPet(
     redirect("/login");
   }
 
-  const parsed = petSchema.safeParse({
-    name: formData.get("name"),
-    species: formData.get("species"),
-    breed: formData.get("breed") || undefined,
-  });
+  const parsed = parseCreatePetFormData(formData);
 
   if (!parsed.success) {
     const msg = parsed.error.issues[0]?.message ?? "Invalid input";
@@ -42,12 +28,7 @@ export async function createFirstPet(
   }
 
   await prisma.pet.create({
-    data: {
-      userId: user.id,
-      name: parsed.data.name,
-      species: parsed.data.species,
-      breed: parsed.data.breed ?? null,
-    },
+    data: buildCreatePetData(user.id, parsed.data),
   });
 
   revalidatePath("/");
