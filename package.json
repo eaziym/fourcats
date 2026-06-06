@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "postinstall": "prisma generate",
-    "dev": "next dev",
+    "dev": "prisma generate && prisma migrate deploy && next dev",
     "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "probe:products": "node scripts/data-pipeline/probe-product-providers.mjs",

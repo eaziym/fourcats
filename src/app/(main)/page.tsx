@@ -1,16 +1,15 @@
 import {
   Bot,
+  Check,
+  ClipboardList,
   Heart,
   MapPin,
   ShoppingBag,
   Sparkles,
   Sun,
+  Utensils,
 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import { careLogItems, mochiPortrait } from "@/lib/pet-data";
+import { redirect } from "next/navigation";
 import {
   AnimatedList,
   FadeContent,
@@ -19,53 +18,153 @@ import {
   SpotlightCard,
 } from "@/components/pet-care/primitives";
 import { PetCareShell } from "@/components/pet-care/shell";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { CardContent } from "@/components/ui/card";
+import { petPlaceholderImage } from "@/lib/pet-data";
+import type { PetCareLogDTO, PetDTO } from "@/lib/pet-queries";
+import { getPetCareContext } from "@/lib/pet-queries";
+import { cn } from "@/lib/utils";
 
-function Dashboard() {
+function timeGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+function formatSpecies(species: string) {
+  const s = species.toLowerCase();
+  if (s === "dog") return "Dog";
+  if (s === "cat") return "Cat";
+  return species;
+}
+
+function careLogPresentation(log: PetCareLogDTO) {
+  const time = new Date(log.loggedAt).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const title =
+    log.notes?.trim().split("\n")[0]?.slice(0, 72) || "Care check-in";
+  const parts = [
+    log.fed === true ? "Fed" : log.fed === false ? "Not fed" : null,
+    log.mood?.trim() || null,
+    log.weightKg ? `${log.weightKg} kg` : null,
+    log.symptoms.length > 0 ? log.symptoms.join(", ") : null,
+  ].filter(Boolean);
+  const subtitle =
+    parts.join(" · ") ||
+    (log.notes?.includes("\n")
+      ? log.notes.trim().split("\n").slice(1).join(" ").slice(0, 120)
+      : "Logged from your care journal");
+
+  const Icon =
+    log.fed === true ? Check : log.fed === false ? Utensils : ClipboardList;
+  const tone =
+    log.fed === true
+      ? "bg-secondary text-secondary-foreground"
+      : "bg-muted text-muted-foreground ring-1 ring-border";
+
+  return { time, title, subtitle, Icon, tone };
+}
+
+function Dashboard({
+  userDisplayName,
+  pet,
+}: {
+  userDisplayName: string;
+  pet: PetDTO;
+}) {
+  const avatarSrc = petPlaceholderImage(pet.species);
+  const ageLabel = pet.ageYears != null ? `${Number(pet.ageYears)} yrs` : "—";
+  const weightLabel = pet.weightKg != null ? `${Number(pet.weightKg)} kg` : "—";
+  const healthSummary =
+    pet.medicalConditions.length > 0
+      ? pet.medicalConditions.slice(0, 2).join(", ")
+      : "No conditions on file";
+  const healthDetail =
+    pet.medicalConditions.length > 0
+      ? "Review care with your vet if symptoms change."
+      : "Great — keep up regular checkups.";
+
+  const nearLabel =
+    pet.locationLabel?.trim() ||
+    (pet.locationPostalCode?.trim()
+      ? `Near ${pet.locationPostalCode}`
+      : "Singapore");
+
   return (
-    <main className="min-h-screen bg-background px-5 pt-8 pb-12 md:ml-64 md:px-12">
+    <main className="min-h-0 flex-1 bg-background px-5 pt-8 pb-12 md:px-12">
       <section className="mx-auto max-w-6xl">
         <FadeContent className="mb-10">
           <h2 className="text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
-            <ShinyText>Good morning, Sarah</ShinyText>
+            <ShinyText>
+              {timeGreeting()}, {userDisplayName}
+            </ShinyText>
           </h2>
           <p className="mt-2 text-lg text-muted-foreground">
-            Here&apos;s Mochi&apos;s care summary for today.
+            Here&apos;s {pet.name}&apos;s care summary for today.
           </p>
         </FadeContent>
 
         <div className="grid gap-6 lg:grid-cols-[0.95fr_1.25fr]">
-          <PetCard />
+          <PetCard
+            pet={pet}
+            avatarSrc={avatarSrc}
+            ageLabel={ageLabel}
+            weightLabel={weightLabel}
+          />
           <div className="grid gap-6">
-            <AiCareAlert />
-            <DailyCareLog />
+            <AiCareAlert petName={pet.name} />
+            <DailyCareLog logs={pet.careLogs} />
           </div>
-          <KibbleReminder />
-          <NearbyCard />
+          <KibbleReminder
+            petName={pet.name}
+            dietary={pet.dietaryRestrictions}
+          />
+          <NearbyCard
+            nearLabel={nearLabel}
+            healthSummary={healthSummary}
+            healthDetail={healthDetail}
+          />
         </div>
       </section>
     </main>
   );
 }
 
-function PetCard() {
+function PetCard({
+  pet,
+  avatarSrc,
+  ageLabel,
+  weightLabel,
+}: {
+  pet: PetDTO;
+  avatarSrc: string;
+  ageLabel: string;
+  weightLabel: string;
+}) {
   return (
     <SpotlightCard className="overflow-hidden border-0">
       <div className="flex items-center gap-5 bg-gradient-to-br from-primary/15 via-accent/40 to-primary/10 p-8 dark:from-primary/20 dark:via-accent/10 dark:to-primary/5">
         <Avatar className="size-24 border-4 border-background shadow-sm">
           <AvatarImage
-            alt="Mochi profile"
+            alt={`${pet.name} profile`}
             className="object-cover"
-            src={mochiPortrait}
+            src={avatarSrc}
           />
-          <AvatarFallback>M</AvatarFallback>
+          <AvatarFallback>{pet.name.slice(0, 1).toUpperCase()}</AvatarFallback>
         </Avatar>
         <div>
           <h3 className="text-2xl font-semibold tracking-tight md:text-3xl">
-            Mochi
+            {pet.name}
           </h3>
           <Pill className="mt-2 bg-secondary text-secondary-foreground">
             <Sparkles className="size-3" />
-            HDB-approved
+            {pet.species.toLowerCase() === "dog"
+              ? "Dog profile"
+              : `${formatSpecies(pet.species)} profile`}
           </Pill>
         </div>
       </div>
@@ -75,13 +174,15 @@ function PetCard() {
             <p className="text-xs font-medium tracking-widest text-muted-foreground">
               Weight
             </p>
-            <p className="mt-3 text-xl font-medium tabular-nums">6.2 kg</p>
+            <p className="mt-3 text-xl font-medium tabular-nums">
+              {weightLabel}
+            </p>
           </div>
           <div className="rounded-xl border border-border bg-muted/40 p-5">
             <p className="text-xs font-medium tracking-widest text-muted-foreground">
               Age
             </p>
-            <p className="mt-3 text-xl font-medium tabular-nums">3 yrs</p>
+            <p className="mt-3 text-xl font-medium tabular-nums">{ageLabel}</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -89,11 +190,15 @@ function PetCard() {
             <Heart className="size-6" />
           </div>
           <div>
-            <p className="font-medium">Health status</p>
-            <p className="text-sm text-muted-foreground">All good</p>
+            <p className="font-medium">Health notes</p>
             <p className="text-sm text-muted-foreground">
-              Next checkup in 4 months
+              {pet.medicalConditions.length === 0
+                ? "No conditions recorded"
+                : pet.medicalConditions.join(", ")}
             </p>
+            {pet.breed ? (
+              <p className="text-sm text-muted-foreground">{pet.breed}</p>
+            ) : null}
           </div>
         </div>
       </CardContent>
@@ -101,7 +206,7 @@ function PetCard() {
   );
 }
 
-function AiCareAlert() {
+function AiCareAlert({ petName }: { petName: string }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-primary/20 via-accent/30 to-primary/10 p-8 shadow-sm dark:from-primary/25 dark:via-primary/10 dark:to-card">
       <div className="flex gap-6">
@@ -116,8 +221,8 @@ function AiCareAlert() {
             </Pill>
           </div>
           <p className="max-w-3xl text-base leading-relaxed text-muted-foreground md:text-lg">
-            Hot day in SG — highs near 32°C. Keep Mochi hydrated on walks and
-            avoid hot pavement between 12pm and 4pm.
+            Hot day in SG — highs near 32°C. Keep {petName} hydrated on walks
+            and avoid hot pavement between 12pm and 4pm.
           </p>
         </div>
       </div>
@@ -126,7 +231,7 @@ function AiCareAlert() {
   );
 }
 
-function DailyCareLog() {
+function DailyCareLog({ logs }: { logs: PetCareLogDTO[] }) {
   return (
     <SpotlightCard className="border-0">
       <CardContent className="p-8">
@@ -134,52 +239,61 @@ function DailyCareLog() {
           <h3 className="text-2xl font-semibold tracking-tight">
             Daily care log
           </h3>
-          <Button className="text-primary" size="sm" variant="ghost">
-            View all
+          <Button className="text-primary" size="sm" variant="ghost" asChild>
+            <a href="/assistant">Log in assistant</a>
           </Button>
         </div>
-        <AnimatedList className="grid gap-7">
-          {careLogItems.map(
-            ({ title, subtitle, time, icon: Icon, tone, done }) => (
-              <div className="flex items-center gap-5" key={title}>
-                <div
-                  className={cn(
-                    "flex size-10 shrink-0 items-center justify-center rounded-full",
-                    tone,
-                  )}
-                >
-                  <Icon className="size-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p
+        {logs.length === 0 ? (
+          <p className="text-muted-foreground">
+            No care logs yet. Ask the AI assistant to help you record meals,
+            mood, weight, or symptoms.
+          </p>
+        ) : (
+          <AnimatedList className="grid gap-7">
+            {logs.map((log) => {
+              const row = careLogPresentation(log);
+              const Icon = row.Icon;
+              return (
+                <div className="flex items-center gap-5" key={log.id}>
+                  <div
                     className={cn(
-                      "font-medium",
-                      done && "text-muted-foreground line-through",
+                      "flex size-10 shrink-0 items-center justify-center rounded-full",
+                      row.tone,
                     )}
                   >
-                    {title}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{subtitle}</p>
-                </div>
-                {time ? (
+                    <Icon className="size-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className={cn("font-medium")}>{row.title}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {row.subtitle}
+                    </p>
+                  </div>
                   <span className="text-sm tabular-nums text-muted-foreground">
-                    {time}
+                    {row.time}
                   </span>
-                ) : (
-                  <Button className="rounded-full" size="sm">
-                    Mark done
-                  </Button>
-                )}
-              </div>
-            ),
-          )}
-        </AnimatedList>
+                </div>
+              );
+            })}
+          </AnimatedList>
+        )}
       </CardContent>
     </SpotlightCard>
   );
 }
 
-function KibbleReminder() {
+function KibbleReminder({
+  petName,
+  dietary,
+}: {
+  petName: string;
+  dietary: string[];
+}) {
+  const dietHint =
+    dietary.length > 0
+      ? `Diet notes on file: ${dietary.join(", ")}.`
+      : `Restock ${petName}'s usual food before you run low.`;
+
   return (
     <SpotlightCard>
       <CardContent className="flex min-h-60 items-center gap-8 p-8">
@@ -187,12 +301,10 @@ function KibbleReminder() {
           <ShoppingBag className="size-9" />
         </div>
         <div>
-          <h3 className="font-semibold">Low on kibble?</h3>
-          <p className="mt-2 max-w-md text-muted-foreground">
-            Time for Mochi&apos;s hypo-allergenic order from your usual store.
-          </p>
-          <Button className="mt-3 px-0" variant="link">
-            Order now →
+          <h3 className="font-semibold">Food & supplies</h3>
+          <p className="mt-2 max-w-md text-muted-foreground">{dietHint}</p>
+          <Button className="mt-3 px-0" variant="link" asChild>
+            <a href="/discovery">Browse local partners →</a>
           </Button>
         </div>
       </CardContent>
@@ -200,30 +312,45 @@ function KibbleReminder() {
   );
 }
 
-function NearbyCard() {
+function NearbyCard({
+  nearLabel,
+  healthSummary,
+  healthDetail,
+}: {
+  nearLabel: string;
+  healthSummary: string;
+  healthDetail: string;
+}) {
   return (
     <SpotlightCard className="border-0">
       <CardContent className="p-8">
         <div className="mb-5 flex items-center gap-3 font-medium">
           <MapPin className="size-6 text-primary" />
-          Nearby in Tampines
+          Nearby — {nearLabel}
         </div>
-        <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-border bg-muted/50 text-muted-foreground">
-          Map preview
+        <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-border bg-muted/50 px-4 text-center text-sm text-muted-foreground">
+          Map preview (connect a maps provider to show live clinics)
         </div>
         <div className="mt-5 flex justify-between text-sm font-medium">
-          <span>The Animal Clinic</span>
-          <span className="text-muted-foreground">1.2 km</span>
+          <span>{healthSummary}</span>
+          <span className="max-w-[55%] text-right text-muted-foreground">
+            {healthDetail}
+          </span>
         </div>
       </CardContent>
     </SpotlightCard>
   );
 }
 
-export default function Home() {
+export default async function Home() {
+  const { userDisplayName, pet } = await getPetCareContext();
+  if (!pet) {
+    redirect("/onboarding");
+  }
+
   return (
     <PetCareShell active="dashboard">
-      <Dashboard />
+      <Dashboard userDisplayName={userDisplayName} pet={pet} />
     </PetCareShell>
   );
 }
