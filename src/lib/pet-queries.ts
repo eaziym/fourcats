@@ -4,6 +4,56 @@ import { cache } from "react";
 import { prisma } from "@/lib/db";
 import { createClient } from "@/lib/supabase/server";
 
+type PetRow = {
+  id: string;
+  name: string;
+  species: string;
+  breed: string | null;
+  photoUrl: string | null;
+  ageYears: { toString(): string } | null;
+  weightKg: { toString(): string } | null;
+  medicalConditions: string[];
+  dietaryRestrictions: string[];
+  locationPostalCode: string | null;
+  locationLabel: string | null;
+  notes: string | null;
+  careLogs?: {
+    id: string;
+    fed: boolean | null;
+    mood: string | null;
+    weightKg: { toString(): string } | null;
+    symptoms: string[];
+    notes: string | null;
+    loggedAt: Date;
+  }[];
+};
+
+function mapPet(row: PetRow): PetDTO {
+  return {
+    id: row.id,
+    name: row.name,
+    species: row.species,
+    breed: row.breed,
+    photoUrl: row.photoUrl,
+    ageYears: row.ageYears != null ? row.ageYears.toString() : null,
+    weightKg: row.weightKg != null ? row.weightKg.toString() : null,
+    medicalConditions: row.medicalConditions,
+    dietaryRestrictions: row.dietaryRestrictions,
+    locationPostalCode: row.locationPostalCode,
+    locationLabel: row.locationLabel,
+    notes: row.notes,
+    careLogs: (row.careLogs ?? []).map((log) => ({
+      id: log.id,
+      fed: log.fed,
+      mood: log.mood,
+      weightKg: log.weightKg != null ? log.weightKg.toString() : null,
+      symptoms: log.symptoms,
+      notes: log.notes,
+      loggedAt: log.loggedAt.toISOString(),
+    })),
+  };
+}
+
 export type PetCareLogDTO = {
   id: string;
   fed: boolean | null;
@@ -19,6 +69,7 @@ export type PetDTO = {
   name: string;
   species: string;
   breed: string | null;
+  photoUrl: string | null;
   ageYears: string | null;
   weightKg: string | null;
   medicalConditions: string[];
@@ -76,28 +127,23 @@ export const getPetCareContext = cache(async (): Promise<PetCareContext> => {
     return { userDisplayName, pet: null };
   }
 
-  const pet: PetDTO = {
-    id: row.id,
-    name: row.name,
-    species: row.species,
-    breed: row.breed,
-    ageYears: row.ageYears != null ? row.ageYears.toString() : null,
-    weightKg: row.weightKg != null ? row.weightKg.toString() : null,
-    medicalConditions: row.medicalConditions,
-    dietaryRestrictions: row.dietaryRestrictions,
-    locationPostalCode: row.locationPostalCode,
-    locationLabel: row.locationLabel,
-    notes: row.notes,
-    careLogs: row.careLogs.map((log) => ({
-      id: log.id,
-      fed: log.fed,
-      mood: log.mood,
-      weightKg: log.weightKg != null ? log.weightKg.toString() : null,
-      symptoms: log.symptoms,
-      notes: log.notes,
-      loggedAt: log.loggedAt.toISOString(),
-    })),
-  };
+  return { userDisplayName, pet: mapPet(row) };
+});
 
-  return { userDisplayName, pet };
+/** All pets for the signed-in user (for the multi-pet Profiles screen). */
+export const getUserPets = cache(async (): Promise<PetDTO[]> => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return [];
+  }
+
+  const rows = await prisma.pet.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: "asc" },
+  });
+
+  return rows.map((row) => mapPet(row));
 });

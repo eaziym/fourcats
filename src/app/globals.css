@@ -230,6 +230,37 @@
   }
 }
 
+/* Landing: scroll-reveal */
+.llp-reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.llp-reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes llp-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .llp-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
 @keyframes rb-fade-up {
   from {
     opacity: 0;

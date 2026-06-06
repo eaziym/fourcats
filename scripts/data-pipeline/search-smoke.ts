@@ -5,7 +5,7 @@ import {
   searchFood,
   searchGroomers,
   searchVets,
-} from "../../src/lib/pet-data/search.ts";
+} from "../../src/lib/pet-data/search";
 
 function money(c: number | null) {
   return c == null ? "?" : `S$${(c / 100).toFixed(2)}`;

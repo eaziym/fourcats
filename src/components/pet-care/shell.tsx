@@ -5,7 +5,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useResizableSidebar } from "@/hooks/use-resizable-sidebar";
-import type { Section } from "@/lib/pet-data";
 import { AppSidebar, SidebarContent } from "./app-sidebar";
 import { AppTopBar } from "./app-top-bar";
 
@@ -13,7 +12,7 @@ export function PetCareShell({
   active,
   children,
 }: {
-  active: Section;
+  active: string;
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);

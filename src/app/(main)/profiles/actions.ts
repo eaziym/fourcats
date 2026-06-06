@@ -50,9 +50,16 @@ const updateSchema = z.object({
   ),
 });
 
-export type UpdatePetState = { error?: string } | null;
+export type UpdatePetState = { error?: string; ok?: boolean } | null;
 
-export async function updatePrimaryPet(
+function revalidateAll() {
+  revalidatePath("/");
+  revalidatePath("/profiles");
+  revalidatePath("/assistant");
+  revalidatePath("/discovery");
+}
+
+export async function updatePet(
   _prev: UpdatePetState,
   formData: FormData,
 ): Promise<UpdatePetState> {
@@ -64,11 +71,17 @@ export async function updatePrimaryPet(
     redirect("/login");
   }
 
-  const pet = await prisma.pet.findFirst({
-    where: { userId: user.id },
-    orderBy: { createdAt: "asc" },
-    select: { id: true },
-  });
+  const petId = String(formData.get("petId") ?? "");
+  const pet = petId
+    ? await prisma.pet.findFirst({
+        where: { id: petId, userId: user.id },
+        select: { id: true },
+      })
+    : await prisma.pet.findFirst({
+        where: { userId: user.id },
+        orderBy: { createdAt: "asc" },
+        select: { id: true },
+      });
   if (!pet) {
     return { error: "No pet profile found." };
   }
@@ -105,9 +118,120 @@ export async function updatePrimaryPet(
     },
   });
 
-  revalidatePath("/");
-  revalidatePath("/profiles");
-  revalidatePath("/assistant");
-  revalidatePath("/discovery");
-  return null;
+  revalidateAll();
+  return { ok: true };
+}
+
+const createSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  species: z.enum(["dog", "cat", "small_pet"]),
+  breed: z
+    .string()
+    .trim()
+    .transform((s) => (s === "" ? null : s))
+    .nullable(),
+});
+
+export type CreatePetState = { error?: string; ok?: boolean } | null;
+
+export async function createPet(
+  _prev: CreatePetState,
+  formData: FormData,
+): Promise<CreatePetState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const parsed = createSchema.safeParse({
+    name: formData.get("name"),
+    species: formData.get("species"),
+    breed: formData.get("breed") ?? "",
+  });
+  if (!parsed.success) {
+    const msg = parsed.error.issues[0]?.message ?? "Invalid input";
+    return { error: msg };
+  }
+
+  await prisma.pet.create({
+    data: {
+      userId: user.id,
+      name: parsed.data.name,
+      species: parsed.data.species,
+      breed: parsed.data.breed,
+    },
+  });
+
+  revalidateAll();
+  return { ok: true };
+}
+
+const PET_PHOTO_BUCKET = "pet-photos";
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const ALLOWED_PHOTO_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+
+export type UploadPhotoState = { error?: string; ok?: boolean } | null;
+
+export async function uploadPetPhoto(
+  _prev: UploadPhotoState,
+  formData: FormData,
+): Promise<UploadPhotoState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const petId = String(formData.get("petId") ?? "");
+  const file = formData.get("photo");
+
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Please choose a photo to upload." };
+  }
+  if (file.size > MAX_PHOTO_BYTES) {
+    return { error: "Photo must be 5 MB or smaller." };
+  }
+  if (!ALLOWED_PHOTO_TYPES.has(file.type)) {
+    return { error: "Use a JPG, PNG, WEBP or GIF image." };
+  }
+
+  const pet = await prisma.pet.findFirst({
+    where: { id: petId, userId: user.id },
+    select: { id: true },
+  });
+  if (!pet) {
+    return { error: "No pet profile found." };
+  }
+
+  const ext = file.type.split("/")[1]?.replace("jpeg", "jpg") ?? "jpg";
+  const path = `${user.id}/${pet.id}-${Date.now()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(PET_PHOTO_BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: true });
+  if (uploadError) {
+    return { error: `Upload failed: ${uploadError.message}` };
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(PET_PHOTO_BUCKET).getPublicUrl(path);
+
+  await prisma.pet.update({
+    where: { id: pet.id },
+    data: { photoUrl: publicUrl },
+  });
+
+  revalidateAll();
+  return { ok: true };
 }

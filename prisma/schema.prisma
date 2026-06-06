@@ -18,10 +18,11 @@ model Pet {
   name                String
   species             String
   breed               String?
-  ageYears            Decimal?         @db.Decimal(5, 2)
-  weightKg            Decimal?         @db.Decimal(6, 2)
-  medicalConditions   String[]         @default([])
-  dietaryRestrictions String[]         @default([])
+  photoUrl            String?
+  ageYears            Decimal?
+  weightKg            Decimal?
+  medicalConditions   String[]  @default([])
+  dietaryRestrictions String[]  @default([])
   locationPostalCode  String?
   locationLabel       String?
   notes               String?

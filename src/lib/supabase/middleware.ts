@@ -50,6 +50,7 @@ export async function updateSession(request: NextRequest) {
 
   const isPublic =
     AUTH_PATHS.has(path) ||
+    path === "/landing" ||
     path.startsWith("/auth/") ||
     path.startsWith("/_next") ||
     path === "/favicon.ico";

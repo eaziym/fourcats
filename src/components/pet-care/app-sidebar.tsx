@@ -7,7 +7,7 @@ import { ModeToggle } from "@/components/mode-toggle";
 import { usePetCare } from "@/components/pet-care/pet-care-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { navItems, petPlaceholderImage, type Section } from "@/lib/pet-data";
+import { navItems, petPlaceholderImage } from "@/lib/pet-data";
 import { cn } from "@/lib/utils";
 import { BrandMascot } from "./mascot";
 import { SignOutButton } from "./sign-out-button";
@@ -60,7 +60,7 @@ export function SidebarContent({
   onNavigate,
   variant = "rail",
 }: {
-  active: Section;
+  active: string;
   onNavigate?: () => void;
   variant?: "rail" | "drawer";
 }) {
@@ -177,7 +177,7 @@ export function AppSidebar({
   sidebarWidth,
   onGripMouseDown,
 }: {
-  active: Section;
+  active: string;
   sidebarWidth: number;
   onGripMouseDown: (e: React.MouseEvent) => void;
 }) {
