@@ -6,17 +6,22 @@ import {
 } from "ai";
 import { buildAssistantSystemPrompt, buildPetTools } from "@/lib/ai/pet-tools";
 import { getModel, SYSTEM_PROMPT } from "@/lib/ai/providers";
-import { buildPetProfilePrompt, speciesToPetType } from "@/lib/pet-data/format";
+import {
+  buildPetProfilePrompt,
+  buildUserSettingsPrompt,
+  speciesToPetType,
+} from "@/lib/pet-data/format";
 import { postalToLatLng } from "@/lib/pet-data/search";
 import { getPetCareContext } from "@/lib/pet-queries";
 
 export async function POST(req: Request) {
   const { messages } = await req.json();
 
-  const { pet } = await getPetCareContext();
+  const { pet, settings } = await getPetCareContext();
   const system = buildAssistantSystemPrompt(
     SYSTEM_PROMPT,
     buildPetProfilePrompt(pet),
+    buildUserSettingsPrompt(settings),
   );
   const petLatLng = pet?.locationPostalCode
     ? postalToLatLng(pet.locationPostalCode)

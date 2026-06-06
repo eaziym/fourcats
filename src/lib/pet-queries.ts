@@ -93,19 +93,68 @@ export type PetSummary = {
 
 export type PetCareContext = {
   userDisplayName: string;
+  settings: UserSettingsDTO | null;
   /** The active pet (cookie-selected, else the first). */
   pet: PetDTO | null;
   /** Lightweight list of all the user's pets, for the switcher. */
   pets: PetSummary[];
 };
 
-function displayNameFromUser(user: {
-  email?: string | null;
-  user_metadata?: Record<string, unknown>;
-}): string {
-  const meta = user.user_metadata?.full_name;
-  if (typeof meta === "string" && meta.trim()) {
-    return meta.trim();
+export type UserSettingsDTO = {
+  displayName: string | null;
+  gender: string | null;
+  monthlyFoodBudgetCents: number | null;
+  monthlyGroomingBudgetCents: number | null;
+  monthlyVetBudgetCents: number | null;
+  monthlySuppliesBudgetCents: number | null;
+  currency: string;
+};
+
+type UserSettingsRow = {
+  displayName: string | null;
+  gender: string | null;
+  monthlyFoodBudgetCents: number | null;
+  monthlyGroomingBudgetCents: number | null;
+  monthlyVetBudgetCents: number | null;
+  monthlySuppliesBudgetCents: number | null;
+  currency: string;
+};
+
+function mapUserSettings(row: UserSettingsRow): UserSettingsDTO {
+  return {
+    displayName: row.displayName,
+    gender: row.gender,
+    monthlyFoodBudgetCents: row.monthlyFoodBudgetCents,
+    monthlyGroomingBudgetCents: row.monthlyGroomingBudgetCents,
+    monthlyVetBudgetCents: row.monthlyVetBudgetCents,
+    monthlySuppliesBudgetCents: row.monthlySuppliesBudgetCents,
+    currency: row.currency,
+  };
+}
+
+function displayNameFromUser(
+  user: {
+    email?: string | null;
+    user_metadata?: Record<string, unknown>;
+  },
+  settings: UserSettingsDTO | null,
+): string {
+  if (settings?.displayName?.trim()) {
+    return settings.displayName.trim();
+  }
+  const meta = user.user_metadata ?? {};
+  const first = meta.first_name;
+  const last = meta.last_name;
+  if (typeof first === "string" && first.trim()) {
+    const parts = [first.trim()];
+    if (typeof last === "string" && last.trim()) {
+      parts.push(last.trim());
+    }
+    return parts.join(" ");
+  }
+  const fullName = meta.full_name;
+  if (typeof fullName === "string" && fullName.trim()) {
+    return fullName.trim();
   }
   const email = user.email;
   if (email) {
@@ -121,10 +170,14 @@ export const getPetCareContext = cache(async (): Promise<PetCareContext> => {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { userDisplayName: "there", pet: null, pets: [] };
+    return { userDisplayName: "there", settings: null, pet: null, pets: [] };
   }
 
-  const userDisplayName = displayNameFromUser(user);
+  const settingsRow = await prisma.userSettings.findUnique({
+    where: { userId: user.id },
+  });
+  const settings = settingsRow ? mapUserSettings(settingsRow) : null;
+  const userDisplayName = displayNameFromUser(user, settings);
 
   const summaries = await prisma.pet.findMany({
     where: { userId: user.id },
@@ -132,7 +185,7 @@ export const getPetCareContext = cache(async (): Promise<PetCareContext> => {
     select: { id: true, name: true, species: true, photoUrl: true },
   });
   if (summaries.length === 0) {
-    return { userDisplayName, pet: null, pets: [] };
+    return { userDisplayName, settings, pet: null, pets: [] };
   }
 
   // Active pet = cookie selection (if it still belongs to the user), else first.
@@ -153,8 +206,31 @@ export const getPetCareContext = cache(async (): Promise<PetCareContext> => {
     },
   });
 
-  return { userDisplayName, pet: row ? mapPet(row) : null, pets: summaries };
+  return {
+    userDisplayName,
+    settings,
+    pet: row ? mapPet(row) : null,
+    pets: summaries,
+  };
 });
+
+/** Owner account settings for the Settings page (auth-scoped). */
+export const getUserSettings = cache(
+  async (): Promise<UserSettingsDTO | null> => {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return null;
+    }
+
+    const row = await prisma.userSettings.findUnique({
+      where: { userId: user.id },
+    });
+    return row ? mapUserSettings(row) : null;
+  },
+);
 
 /** All pets for the signed-in user (for the multi-pet Profiles screen). */
 export const getUserPets = cache(async (): Promise<PetDTO[]> => {

@@ -1,5 +1,5 @@
 /** Presentation helpers for grounded pet-data results (price, pet type). */
-import type { PetDTO } from "@/lib/pet-queries";
+import type { PetDTO, UserSettingsDTO } from "@/lib/pet-queries";
 
 /** Product shape surfaced to the UI (grounded — never invented by the model). */
 export type FoodProduct = {
@@ -87,6 +87,67 @@ export function buildPetProfilePrompt(pet: PetDTO | null): string {
   const area = pet.locationLabel?.trim() || pet.locationPostalCode?.trim();
   if (area) lines.push(`Location: ${area}`);
   return lines.join("\n");
+}
+
+const GENDER_LABELS: Record<string, string> = {
+  female: "Female",
+  male: "Male",
+  non_binary: "Non-binary",
+  other: "Other",
+  prefer_not_to_say: "Prefer not to say",
+};
+
+function budgetLine(
+  label: string,
+  cents: number | null | undefined,
+): string | null {
+  if (cents == null || cents < 0) return null;
+  const formatted = formatPriceCents(cents);
+  if (!formatted) return null;
+  return `${label}: ${formatted}/month — prefer recommendations within this budget; flag options that exceed it.`;
+}
+
+/** Compact owner preferences for AI system prompts. */
+export function buildUserSettingsPrompt(
+  settings: UserSettingsDTO | null,
+): string {
+  if (!settings) {
+    return "No owner preferences on file yet. Ask about budget constraints before recommending paid products or services.";
+  }
+
+  const lines: string[] = [];
+  if (settings.displayName?.trim()) {
+    lines.push(`Display name: ${settings.displayName.trim()}`);
+  }
+  if (settings.gender?.trim()) {
+    const genderKey = settings.gender.trim().toLowerCase();
+    lines.push(`Gender: ${GENDER_LABELS[genderKey] ?? settings.gender.trim()}`);
+  }
+
+  const budgets = [
+    budgetLine("Food budget", settings.monthlyFoodBudgetCents),
+    budgetLine("Grooming budget", settings.monthlyGroomingBudgetCents),
+    budgetLine("Vet care budget", settings.monthlyVetBudgetCents),
+    budgetLine("Supplies & treats budget", settings.monthlySuppliesBudgetCents),
+  ].filter(Boolean) as string[];
+
+  if (budgets.length > 0) {
+    lines.push(...budgets);
+  } else {
+    lines.push(
+      "Monthly budgets: not set — mention typical price ranges when recommending.",
+    );
+  }
+
+  return lines.join("\n");
+}
+
+/** Combined pet + owner context for grounded AI recommendations. */
+export function buildRecommendationContext(
+  pet: PetDTO | null,
+  settings: UserSettingsDTO | null,
+): string {
+  return `${buildPetProfilePrompt(pet)}\n\n--- OWNER PREFERENCES ---\n${buildUserSettingsPrompt(settings)}`;
 }
 
 export function speciesToPetType(

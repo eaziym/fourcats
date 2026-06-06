@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 
 import {
   buildPetProfilePrompt,
+  buildRecommendationContext,
+  buildUserSettingsPrompt,
   formatPriceCents,
   formatPriceRange,
   petTypeLabel,
@@ -131,5 +133,87 @@ describe("buildPetProfilePrompt", () => {
         "Location: 560123",
       ].join("\n"),
     );
+  });
+});
+
+describe("buildUserSettingsPrompt", () => {
+  it("asks about budgets when no owner preferences exist", () => {
+    assert.match(
+      buildUserSettingsPrompt(null),
+      /No owner preferences on file yet/,
+    );
+  });
+
+  it("formats display name, gender, and available monthly budgets", () => {
+    const prompt = buildUserSettingsPrompt({
+      displayName: " Ada ",
+      gender: "non_binary",
+      monthlyFoodBudgetCents: 12000,
+      monthlyGroomingBudgetCents: null,
+      monthlyVetBudgetCents: 25050,
+      monthlySuppliesBudgetCents: -1,
+      currency: "SGD",
+    });
+
+    assert.equal(
+      prompt,
+      [
+        "Display name: Ada",
+        "Gender: Non-binary",
+        "Food budget: S$120.00/month — prefer recommendations within this budget; flag options that exceed it.",
+        "Vet care budget: S$250.50/month — prefer recommendations within this budget; flag options that exceed it.",
+      ].join("\n"),
+    );
+  });
+
+  it("falls back when no usable budget values are set", () => {
+    assert.match(
+      buildUserSettingsPrompt({
+        displayName: null,
+        gender: "custom",
+        monthlyFoodBudgetCents: null,
+        monthlyGroomingBudgetCents: null,
+        monthlyVetBudgetCents: null,
+        monthlySuppliesBudgetCents: null,
+        currency: "SGD",
+      }),
+      /Monthly budgets: not set/,
+    );
+  });
+});
+
+describe("buildRecommendationContext", () => {
+  it("combines pet profile and owner preferences for agent prompts", () => {
+    const context = buildRecommendationContext(
+      {
+        id: "pet-1",
+        name: "Mochi",
+        species: "Cat",
+        breed: null,
+        photoUrl: null,
+        ageYears: null,
+        weightKg: null,
+        medicalConditions: [],
+        dietaryRestrictions: [],
+        locationLabel: null,
+        locationPostalCode: null,
+        notes: null,
+        careLogs: [],
+      },
+      {
+        displayName: "Ada",
+        gender: null,
+        monthlyFoodBudgetCents: 10000,
+        monthlyGroomingBudgetCents: null,
+        monthlyVetBudgetCents: null,
+        monthlySuppliesBudgetCents: null,
+        currency: "SGD",
+      },
+    );
+
+    assert.match(context, /^Name: Mochi\nSpecies: Cat/);
+    assert.match(context, /--- OWNER PREFERENCES ---/);
+    assert.match(context, /Display name: Ada/);
+    assert.match(context, /Food budget: S\$100\.00\/month/);
   });
 });

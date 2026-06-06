@@ -54,7 +54,9 @@ const TABLES = [
 function main() {
   const url = process.env.SUPABASE_DB_URL;
   if (!url) {
-    throw new Error("Set SUPABASE_DB_URL in .env (Supabase Postgres connection string)");
+    throw new Error(
+      "Set SUPABASE_DB_URL in .env (Supabase Postgres connection string)",
+    );
   }
   const args = process.argv.slice(2);
   const schemaOnly = args.includes("--schema-only");
@@ -62,13 +64,24 @@ function main() {
 
   const c = parsePgUrl(url);
   const psqlBase = [
-    "exec", "-i",
-    "-e", `PGPASSWORD=${c.password}`,
-    "-e", "PGSSLMODE=require",
-    CONTAINER, "psql",
-    "-h", c.host, "-p", c.port,
-    "-U", c.user, "-d", c.database || "postgres",
-    "-v", "ON_ERROR_STOP=1",
+    "exec",
+    "-i",
+    "-e",
+    `PGPASSWORD=${c.password}`,
+    "-e",
+    "PGSSLMODE=require",
+    CONTAINER,
+    "psql",
+    "-h",
+    c.host,
+    "-p",
+    c.port,
+    "-U",
+    c.user,
+    "-d",
+    c.database || "postgres",
+    "-v",
+    "ON_ERROR_STOP=1",
   ];
   const psql = (sqlText) => {
     const r = spawnSync("docker", psqlBase, {
@@ -89,11 +102,21 @@ function main() {
 
   console.log("2/3 dump local pipeline data from container");
   const dumpArgs = [
-    "exec", CONTAINER, "pg_dump", "-U", "postgres", "-d", "postgres",
-    "--data-only", "--no-owner", "--no-privileges",
+    "exec",
+    CONTAINER,
+    "pg_dump",
+    "-U",
+    "postgres",
+    "-d",
+    "postgres",
+    "--data-only",
+    "--no-owner",
+    "--no-privileges",
     ...TABLES.flatMap((t) => ["-t", `public.${t}`]),
   ];
-  const dump = execFileSync("docker", dumpArgs, { maxBuffer: 512 * 1024 * 1024 });
+  const dump = execFileSync("docker", dumpArgs, {
+    maxBuffer: 512 * 1024 * 1024,
+  });
   writeFileSync(DUMP, dump);
   console.log(`   dumped ${(dump.length / 1e6).toFixed(1)} MB`);
 

@@ -149,7 +149,12 @@ export function SignupForm() {
               {info}
             </p>
           ) : null}
-          <Button className="h-11 w-full" disabled={pending} size="lg" type="submit">
+          <Button
+            className="h-11 w-full"
+            disabled={pending}
+            size="lg"
+            type="submit"
+          >
             {pending ? "Creating account…" : "Create account"}
           </Button>
         </form>

@@ -135,15 +135,19 @@ export function buildPetTools(opts: {
 export function buildAssistantSystemPrompt(
   basePrompt: string,
   profileText: string,
+  ownerPreferencesText?: string,
 ): string {
+  const ownerSection = ownerPreferencesText
+    ? `\n\n--- OWNER PREFERENCES ---\n${ownerPreferencesText}`
+    : "";
   return `${basePrompt}
 
 You can ground answers in a real Singapore catalogue using tools:
 - search_food: real pet-food products (brand, price, ingredients, buy link). Use it before recommending any food, and never invent products or prices.
 - search_groomers / search_vets: nearby places with ratings and contacts. "Near me" means near the pet's saved location.
 
-Always prefer tool results over guessing. When recommending products or places, include the price/rating and that a link/contact is available. Keep a warm, concise tone and use light Markdown.
+Always prefer tool results over guessing. When recommending products or places, include the price/rating and that a link/contact is available. Respect the owner's monthly budget preferences when set — prefer in-budget options and flag when matches exceed budget. Keep a warm, concise tone and use light Markdown.
 
 --- PET PROFILE ---
-${profileText}`;
+${profileText}${ownerSection}`;
 }

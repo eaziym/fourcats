@@ -26,7 +26,12 @@ import { getUser } from "@/lib/auth/server";
 import type { BookingDraft } from "@/lib/booking/types";
 import { downscaleForVisionPreview } from "@/lib/image/downscale-for-vision";
 import { enrichPlaceCards } from "@/lib/pet-data/enrich-places";
-import { buildPetProfilePrompt, speciesToPetType } from "@/lib/pet-data/format";
+import {
+  buildPetProfilePrompt,
+  buildRecommendationContext,
+  buildUserSettingsPrompt,
+  speciesToPetType,
+} from "@/lib/pet-data/format";
 import { postalToLatLng } from "@/lib/pet-data/search";
 import { getPetCareContext } from "@/lib/pet-queries";
 
@@ -214,10 +219,11 @@ async function handleGeneralAgent(req: Request): Promise<Response> {
     return NextResponse.json({ error: "Empty message." }, { status: 400 });
   }
 
-  const { pet } = await getPetCareContext();
+  const { pet, settings } = await getPetCareContext();
   const system = buildAssistantSystemPrompt(
     SYSTEM_PROMPT,
     buildPetProfilePrompt(pet),
+    buildUserSettingsPrompt(settings),
   );
   const petLatLng = pet?.locationPostalCode
     ? postalToLatLng(pet.locationPostalCode)
@@ -298,8 +304,8 @@ async function handleFoodAgent(req: Request): Promise<Response> {
   }
 
   // Authoritative pet profile from the server (don't trust the client).
-  const { pet } = await getPetCareContext();
-  const profileText = buildPetProfilePrompt(pet);
+  const { pet, settings } = await getPetCareContext();
+  const contextText = buildRecommendationContext(pet, settings);
 
   let photoDataUrl: string | undefined;
   if (imageBlob) {
@@ -348,7 +354,7 @@ async function handleFoodAgent(req: Request): Promise<Response> {
     : message;
 
   try {
-    const agent = buildFoodAgent(profileText);
+    const agent = buildFoodAgent(contextText);
     const result = await run(agent, agentInput, {
       context: runContext,
       maxTurns: 12,
@@ -418,8 +424,8 @@ async function handleVetAgent(req: Request): Promise<Response> {
       "My pet isn't feeling well — please assess the symptoms and suggest what to do and which vet to see.";
   }
 
-  const { pet } = await getPetCareContext();
-  const profileText = buildPetProfilePrompt(pet);
+  const { pet, settings } = await getPetCareContext();
+  const contextText = buildRecommendationContext(pet, settings);
 
   // Resolve a seed location: browser GPS (preferred) → pet's saved postal code.
   let locationNote: string;
@@ -498,7 +504,7 @@ async function handleVetAgent(req: Request): Promise<Response> {
     : message;
 
   try {
-    const agent = buildVetAgent(profileText, locationNote);
+    const agent = buildVetAgent(contextText, locationNote);
     const result = await run(agent, agentInput, {
       context: runContext,
       maxTurns: 12,
@@ -535,8 +541,8 @@ async function handleGroomingAgent(req: Request): Promise<Response> {
       ? body.message.trim()
       : "Suggest the best grooming stores near me for my pet.";
 
-  const { pet } = await getPetCareContext();
-  const profileText = buildPetProfilePrompt(pet);
+  const { pet, settings } = await getPetCareContext();
+  const contextText = buildRecommendationContext(pet, settings);
 
   // Resolve a seed location: browser GPS (preferred) → pet's saved postal code.
   let lat: number | undefined;
@@ -568,7 +574,7 @@ async function handleGroomingAgent(req: Request): Promise<Response> {
   };
 
   try {
-    const agent = buildGroomingAgent(profileText, locationNote);
+    const agent = buildGroomingAgent(contextText, locationNote);
     const result = await run(agent, message, {
       context: runContext,
       maxTurns: 12,
@@ -631,8 +637,8 @@ async function handleBookingAgent(
   const presetPlaceId =
     typeof body.servicePlaceId === "string" ? body.servicePlaceId : undefined;
 
-  const { pet } = await getPetCareContext();
-  const profileText = buildPetProfilePrompt(pet);
+  const { pet, settings } = await getPetCareContext();
+  const contextText = buildRecommendationContext(pet, settings);
 
   const runContext: BookingAgentContext = {
     user: sessionUser,
@@ -692,7 +698,7 @@ async function handleBookingAgent(
     "No preset place — infer from the user's message and recent places.";
 
   try {
-    const agent = buildBookingAgent(profileText, recentPlacesNote, presetNote);
+    const agent = buildBookingAgent(contextText, recentPlacesNote, presetNote);
     const result = await run(agent, message, {
       context: runContext,
       maxTurns: 8,

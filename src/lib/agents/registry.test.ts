@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  AGENT_TOOLS,
   ASSISTANT_AGENTS,
   getAgentLabel,
   getAssistantAgent,
@@ -28,7 +29,9 @@ describe("ASSISTANT_AGENTS", () => {
         ["chat", "food", "grooming", "vet", "meme"].includes(agent.kind),
         true,
       );
+      assert.equal(Array.isArray(AGENT_TOOLS[agent.id]), true);
     }
+    assert.equal(AGENT_TOOLS.booking?.includes("create_booking_draft"), true);
   });
 });
 

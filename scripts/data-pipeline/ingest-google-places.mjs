@@ -46,10 +46,30 @@ const FIELD_MASK = [
 // per-region queries for density. Vets also include exotic/avian/small-animal
 // clinics so rabbit/bird/reptile/fish owners are served, not just dogs & cats.
 const SG_REGIONS = [
-  "Tampines", "Bedok", "Pasir Ris", "Jurong East", "Jurong West", "Clementi",
-  "Woodlands", "Yishun", "Sembawang", "Ang Mo Kio", "Sengkang", "Punggol",
-  "Hougang", "Serangoon", "Bishan", "Toa Payoh", "Bukit Timah", "Bukit Batok",
-  "Choa Chu Kang", "Queenstown", "Bukit Merah", "Kallang", "Geylang", "Novena",
+  "Tampines",
+  "Bedok",
+  "Pasir Ris",
+  "Jurong East",
+  "Jurong West",
+  "Clementi",
+  "Woodlands",
+  "Yishun",
+  "Sembawang",
+  "Ang Mo Kio",
+  "Sengkang",
+  "Punggol",
+  "Hougang",
+  "Serangoon",
+  "Bishan",
+  "Toa Payoh",
+  "Bukit Timah",
+  "Bukit Batok",
+  "Choa Chu Kang",
+  "Queenstown",
+  "Bukit Merah",
+  "Kallang",
+  "Geylang",
+  "Novena",
 ];
 
 const QUERY_SETS = {
@@ -109,8 +129,8 @@ function parseArgs(argv) {
   for (let i = 2; i < argv.length; i += 1) {
     const a = argv[i];
     const next = argv[i + 1];
-    if (a === "--kind" && next) args.kind = next, (i += 1);
-    else if (a === "--delay" && next) args.delay = Number(next), (i += 1);
+    if (a === "--kind" && next) (args.kind = next), (i += 1);
+    else if (a === "--delay" && next) (args.delay = Number(next)), (i += 1);
     else if (a === "--dry-run") args.dryRun = true;
   }
   return args;
@@ -141,7 +161,9 @@ async function searchText(textQuery, includedType, pageToken) {
   });
   const json = await res.json();
   if (!res.ok) {
-    throw new Error(`Places ${res.status}: ${json?.error?.message ?? JSON.stringify(json).slice(0, 200)}`);
+    throw new Error(
+      `Places ${res.status}: ${json?.error?.message ?? JSON.stringify(json).slice(0, 200)}`,
+    );
   }
   return json;
 }
@@ -188,7 +210,8 @@ function normalize(place, kind) {
     author_name: rv.authorAttribution?.displayName ?? null,
     author_uri: rv.authorAttribution?.uri ?? null,
     language_code: rv.text?.languageCode ?? null,
-    relative_publish_time_description: rv.relativePublishTimeDescription ?? null,
+    relative_publish_time_description:
+      rv.relativePublishTimeDescription ?? null,
     published_at: rv.publishTime ?? null,
     raw: rv,
   }));
@@ -254,20 +277,42 @@ on conflict (service_place_id, source, source_review_id) do update set
 
 async function upsertPlace(pool, p) {
   const { rows } = await pool.query(PLACE_UPSERT, [
-    p.source, p.source_place_id, p.kind, p.name, p.formatted_address,
-    p.postal_code, p.neighbourhood, p.lat, p.lng, p.rating, p.user_rating_count,
-    p.price_level, p.business_status, p.national_phone_number,
-    p.international_phone_number, p.website_url, p.google_maps_url,
-    JSON.stringify(p.opening_hours), p.service_tags, JSON.stringify(p.raw),
+    p.source,
+    p.source_place_id,
+    p.kind,
+    p.name,
+    p.formatted_address,
+    p.postal_code,
+    p.neighbourhood,
+    p.lat,
+    p.lng,
+    p.rating,
+    p.user_rating_count,
+    p.price_level,
+    p.business_status,
+    p.national_phone_number,
+    p.international_phone_number,
+    p.website_url,
+    p.google_maps_url,
+    JSON.stringify(p.opening_hours),
+    p.service_tags,
+    JSON.stringify(p.raw),
   ]);
   const placeId = rows[0].id;
   let reviewCount = 0;
   for (const rv of p.reviews) {
     if (!rv.source_review_id) continue;
     await pool.query(REVIEW_UPSERT, [
-      placeId, rv.source_review_id, rv.rating, rv.text, rv.author_name,
-      rv.author_uri, rv.language_code, rv.relative_publish_time_description,
-      rv.published_at, JSON.stringify(rv.raw),
+      placeId,
+      rv.source_review_id,
+      rv.rating,
+      rv.text,
+      rv.author_name,
+      rv.author_uri,
+      rv.language_code,
+      rv.relative_publish_time_description,
+      rv.published_at,
+      JSON.stringify(rv.raw),
     ]);
     reviewCount += 1;
   }
@@ -303,7 +348,9 @@ async function ingestKind(pool, kind, args, runId) {
         added += 1;
         if (places >= set.target) break;
       }
-      console.log(`  [${kind}] "${query}" p${page + 1}: +${added} (total ${places})`);
+      console.log(
+        `  [${kind}] "${query}" p${page + 1}: +${added} (total ${places})`,
+      );
       pageToken = json.nextPageToken ?? null;
       page += 1;
       if (pageToken && places < set.target) await sleep(args.delay + 1200);
@@ -324,7 +371,9 @@ async function ingestKind(pool, kind, args, runId) {
 async function main() {
   if (!API_KEY) throw new Error("GOOGLE_PLACES_API_KEY missing from env");
   const args = parseArgs(process.argv);
-  console.log(`Google Places ingest -> ${args.dryRun ? "DRY RUN" : describeTarget()} | kind=${args.kind}`);
+  console.log(
+    `Google Places ingest -> ${args.dryRun ? "DRY RUN" : describeTarget()} | kind=${args.kind}`,
+  );
 
   const kinds = args.kind === "all" ? ["groomer", "vet"] : args.kind.split(",");
   const pool = args.dryRun ? null : getPool();

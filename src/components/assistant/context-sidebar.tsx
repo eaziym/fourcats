@@ -10,7 +10,11 @@ import { useEffect, useState } from "react";
 import { CollapsibleAssistantPanel } from "@/components/assistant/collapsible-assistant-panel";
 import { usePetCare } from "@/components/pet-care/pet-care-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ASSISTANT_AGENTS, type AssistantAgentId } from "@/lib/agents/registry";
+import {
+  AGENT_TOOLS,
+  ASSISTANT_AGENTS,
+  HIDDEN_AGENT_LABELS,
+} from "@/lib/agents/registry";
 import { buildContextPetSubtitle } from "@/lib/assistant-pet-copy";
 import { petPlaceholderImage } from "@/lib/pet-data";
 
@@ -35,14 +39,42 @@ const sources = [
   },
 ] as const;
 
-export function ContextSidebar({
-  activeAgentId,
+function AgentCatalogCard({
+  id,
+  label,
+  description,
+  tools,
 }: {
-  activeAgentId: AssistantAgentId;
+  id: string;
+  label: string;
+  description: string;
+  tools: string[];
 }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+      <h4 className="text-sm font-semibold text-foreground">{label}</h4>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+        {description}
+      </p>
+      {tools.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {tools.map((tool) => (
+            <code
+              className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-foreground"
+              key={`${id}-${tool}`}
+            >
+              {tool}
+            </code>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function ContextSidebar() {
   const { pet } = usePetCare();
   const [collapsed, setCollapsed] = useState(false);
-  const agent = ASSISTANT_AGENTS.find((a) => a.id === activeAgentId);
   const petName = pet?.name ?? "Your pet";
   const petAvatar = pet ? petPlaceholderImage(pet.species) : undefined;
   const petSubtitle = pet
@@ -78,7 +110,7 @@ export function ContextSidebar({
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6 md:p-8">
         <div className="mb-4 flex items-center justify-between gap-2">
           <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-            {activeAgentId === "meme" ? "Meme agent" : "AI context sources"}
+            AI context & agents
           </span>
           <button
             aria-label="Collapse AI context sources"
@@ -91,12 +123,12 @@ export function ContextSidebar({
           </button>
         </div>
 
-        {agent ? (
-          <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-            <span className="font-medium text-foreground">{agent.label}.</span>{" "}
-            {agent.description}
-          </p>
-        ) : null}
+        <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
+          One pet assistant handles your messages and delegates to specialists
+          when needed. You&apos;ll see which agent and tools were used in the
+          chat.
+        </p>
+
         <div className="mb-4 flex items-center gap-3 rounded-xl border border-amber-300/60 bg-amber-50/60 p-3 dark:border-amber-700/40 dark:bg-amber-950/30">
           <Avatar className="size-9 border border-border">
             <AvatarImage alt={petName} src={petAvatar} />
@@ -111,44 +143,56 @@ export function ContextSidebar({
             </p>
           </div>
         </div>
-        {activeAgentId === "meme" ? (
-          <div className="rounded-2xl border border-border bg-muted/30 p-4 text-sm leading-relaxed text-muted-foreground">
-            <p className="mb-2 font-medium text-foreground">Tips</p>
-            <ul className="list-inside list-disc space-y-1">
-              <li>Use a clear, well-lit face or body shot of your pet.</li>
-              <li>
-                Memes are generated with OpenAI image editing (gpt-image-1).
-              </li>
-              <li>Requires OPENAI_API_KEY on the server.</li>
-            </ul>
-          </div>
-        ) : (
-          <div className="grid gap-3">
-            {sources.map(({ source, title, detail, icon: Icon, iconWrap }) => (
-              <div
-                className="rounded-xl border border-border bg-card p-3 shadow-sm transition-shadow hover:shadow-md"
-                key={title}
-              >
-                <div className="mb-2 flex items-center gap-2">
-                  <div
-                    className={`flex size-6 items-center justify-center rounded ${iconWrap}`}
-                  >
-                    <Icon className="size-3.5" />
-                  </div>
-                  <span className="text-[11px] font-medium text-muted-foreground">
-                    {source}
-                  </span>
+
+        <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+          Available agents
+        </div>
+        <div className="mb-6 grid gap-2.5">
+          {ASSISTANT_AGENTS.map((agent) => (
+            <AgentCatalogCard
+              description={agent.description}
+              id={agent.id}
+              key={agent.id}
+              label={agent.label}
+              tools={AGENT_TOOLS[agent.id] ?? []}
+            />
+          ))}
+          <AgentCatalogCard
+            description="Prepares booking drafts when you ask to schedule at a groomer or vet."
+            id="booking"
+            label={HIDDEN_AGENT_LABELS.booking ?? "Booking assistant"}
+            tools={AGENT_TOOLS.booking ?? []}
+          />
+        </div>
+
+        <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+          Sample sources
+        </div>
+        <div className="grid gap-3">
+          {sources.map(({ source, title, detail, icon: Icon, iconWrap }) => (
+            <div
+              className="rounded-xl border border-border bg-card p-3 shadow-sm transition-shadow hover:shadow-md"
+              key={title}
+            >
+              <div className="mb-2 flex items-center gap-2">
+                <div
+                  className={`flex size-6 items-center justify-center rounded ${iconWrap}`}
+                >
+                  <Icon className="size-3.5" />
                 </div>
-                <h4 className="mb-1 text-sm font-semibold leading-tight text-foreground">
-                  {title}
-                </h4>
-                <p className="line-clamp-3 text-xs leading-relaxed text-muted-foreground">
-                  {detail}
-                </p>
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  {source}
+                </span>
               </div>
-            ))}
-          </div>
-        )}
+              <h4 className="mb-1 text-sm font-semibold leading-tight text-foreground">
+                {title}
+              </h4>
+              <p className="line-clamp-3 text-xs leading-relaxed text-muted-foreground">
+                {detail}
+              </p>
+            </div>
+          ))}
+        </div>
 
         <div className="pointer-events-none mt-auto flex justify-center pt-8 opacity-[0.12]">
           <Heart aria-hidden className="size-[120px] text-primary" />

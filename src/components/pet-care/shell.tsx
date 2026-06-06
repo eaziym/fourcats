@@ -58,11 +58,13 @@ export function PetCareShell({
           className="flex w-72 flex-col border-sidebar-border bg-sidebar p-0"
         >
           <SheetTitle className="sr-only">Navigation</SheetTitle>
-          <SidebarContent
-            active={active}
-            onNavigate={() => setMobileOpen(false)}
-            variant="drawer"
-          />
+          {mobileOpen ? (
+            <SidebarContent
+              active={active}
+              onNavigate={() => setMobileOpen(false)}
+              variant="drawer"
+            />
+          ) : null}
         </SheetContent>
       </Sheet>
 

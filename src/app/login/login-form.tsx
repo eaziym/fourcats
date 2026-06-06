@@ -93,7 +93,12 @@ export function LoginForm({
               {error}
             </p>
           ) : null}
-          <Button className="h-11 w-full" disabled={pending} size="lg" type="submit">
+          <Button
+            className="h-11 w-full"
+            disabled={pending}
+            size="lg"
+            type="submit"
+          >
             {pending ? "Signing in…" : "Sign in"}
           </Button>
         </form>

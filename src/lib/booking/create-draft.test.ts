@@ -15,6 +15,20 @@ describe("buildMailtoUrl", () => {
     assert.match(url, /subject=Booking/);
     assert.match(url, /body=Please/);
   });
+
+  it("trims recipients and preserves multiline draft content", () => {
+    const url = buildMailtoUrl(
+      " bookings@example.sg ",
+      "Line check",
+      "First line\nSecond line",
+    );
+    const parsed = new URL(url);
+
+    assert.equal(parsed.protocol, "mailto:");
+    assert.equal(parsed.pathname, "bookings%40example.sg");
+    assert.equal(parsed.searchParams.get("subject"), "Line check");
+    assert.equal(parsed.searchParams.get("body"), "First line\nSecond line");
+  });
 });
 
 describe("matchPlaceFromMessage", () => {
@@ -31,5 +45,34 @@ describe("matchPlaceFromMessage", () => {
       { id: "solo", name: "Bright Vet Clinic" },
     ]);
     assert.equal(id, "solo");
+  });
+
+  it("prefers the longest matching name", () => {
+    const id = matchPlaceFromMessage("Please book with Happy Paws Vet Clinic", [
+      { id: "short", name: "Happy Paws" },
+      { id: "long", name: "Happy Paws Vet Clinic" },
+    ]);
+
+    assert.equal(id, "long");
+  });
+
+  it("falls back to significant token overlap", () => {
+    const id = matchPlaceFromMessage("Can you book Heartland for Friday?", [
+      { id: "abc", name: "Heartland Paws Grooming" },
+      { id: "def", name: "Pet Lovers Centre" },
+    ]);
+
+    assert.equal(id, "abc");
+  });
+
+  it("returns null when there are no candidates or no confident multi-candidate match", () => {
+    assert.equal(matchPlaceFromMessage("Book a visit", []), null);
+    assert.equal(
+      matchPlaceFromMessage("Book a visit", [
+        { id: "abc", name: "Heartland Paws Grooming" },
+        { id: "def", name: "Pet Lovers Centre" },
+      ]),
+      null,
+    );
   });
 });

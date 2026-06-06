@@ -40,7 +40,17 @@ export const ASSISTANT_AGENTS = [
 export type AssistantAgentId = (typeof ASSISTANT_AGENTS)[number]["id"];
 export type AssistantAgentKind = (typeof ASSISTANT_AGENTS)[number]["kind"];
 
-/** Agents that run implicitly — not shown in the multi-select chips. */
+/** Tools each agent may call — shown in the agents catalog. */
+export const AGENT_TOOLS: Record<string, string[]> = {
+  general: ["search_food", "search_groomers", "search_vets"],
+  food: ["search_food"],
+  grooming: ["search_groomers"],
+  vet: ["search_vets"],
+  meme: ["generate_pet_meme"],
+  booking: ["lookup_place", "create_booking_draft"],
+};
+
+/** Agents that run implicitly — not user-selectable. */
 export const HIDDEN_AGENT_LABELS: Record<string, string> = {
   booking: "Booking assistant",
 };

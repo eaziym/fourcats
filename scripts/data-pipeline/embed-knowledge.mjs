@@ -23,8 +23,8 @@ function parseArgs(argv) {
   for (let i = 2; i < argv.length; i += 1) {
     const a = argv[i];
     const next = argv[i + 1];
-    if (a === "--entity" && next) args.entity = next, (i += 1);
-    else if (a === "--limit" && next) args.limit = Number(next), (i += 1);
+    if (a === "--entity" && next) (args.entity = next), (i += 1);
+    else if (a === "--limit" && next) (args.limit = Number(next)), (i += 1);
   }
   return args;
 }
@@ -49,7 +49,8 @@ const SOURCES = {
         r.title,
         `Brand: ${r.brand ?? "unknown"}. For: ${r.pet_type ?? "pets"}. Type: ${r.product_type ?? "food"}. Price: ${price}. ${r.available ? "In stock." : "Out of stock."}`,
         r.ingredients && `Ingredients: ${r.ingredients}`,
-        r.nutritional_analysis && `Nutritional analysis: ${r.nutritional_analysis}`,
+        r.nutritional_analysis &&
+          `Nutritional analysis: ${r.nutritional_analysis}`,
         r.suitable_for && `Suitable for: ${r.suitable_for}`,
         r.feeding_instructions && `Feeding: ${r.feeding_instructions}`,
         r.description,
@@ -90,7 +91,8 @@ const SOURCES = {
         r.formatted_address,
         r.rating && `Rating ${r.rating} (${r.user_rating_count ?? 0} reviews).`,
         r.service_tags?.length && `Services: ${r.service_tags.join(", ")}.`,
-        r.suitability_tags?.length && `Good for: ${r.suitability_tags.join(", ")}.`,
+        r.suitability_tags?.length &&
+          `Good for: ${r.suitability_tags.join(", ")}.`,
         r.review_summary && `Reviews: ${r.review_summary}`,
       ]
         .filter(Boolean)
@@ -171,8 +173,13 @@ async function embedEntity(pool, entityType, def, limit) {
       const c = batch[j];
       const vec = `[${res.data[j].embedding.join(",")}]`;
       await pool.query(UPSERT, [
-        entityType, c.entity_id, c.source, c.title, c.body,
-        JSON.stringify(c.metadata), vec,
+        entityType,
+        c.entity_id,
+        c.source,
+        c.title,
+        c.body,
+        JSON.stringify(c.metadata),
+        vec,
       ]);
     }
     done += batch.length;
@@ -183,7 +190,9 @@ async function embedEntity(pool, entityType, def, limit) {
 
 async function main() {
   const args = parseArgs(process.argv);
-  console.log(`Embed -> ${describeTarget()} | entity=${args.entity} model=${MODEL}`);
+  console.log(
+    `Embed -> ${describeTarget()} | entity=${args.entity} model=${MODEL}`,
+  );
   const pool = getPool();
   const types =
     args.entity === "all" ? Object.keys(SOURCES) : args.entity.split(",");
@@ -192,10 +201,17 @@ async function main() {
     for (const t of types) {
       const def = SOURCES[t === "products" ? "product" : t];
       if (!def) {
-        console.warn(`  unknown entity "${t}" (use product|service_place|place_review)`);
+        console.warn(
+          `  unknown entity "${t}" (use product|service_place|place_review)`,
+        );
         continue;
       }
-      total += await embedEntity(pool, t === "products" ? "product" : t, def, args.limit);
+      total += await embedEntity(
+        pool,
+        t === "products" ? "product" : t,
+        def,
+        args.limit,
+      );
     }
   } finally {
     await pool.end();

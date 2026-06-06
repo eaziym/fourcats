@@ -8,10 +8,11 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import { DelegationActivity } from "@/components/assistant/delegation-activity";
 import { BrandMascot } from "@/components/pet-care/mascot";
 import { getAgentLabel } from "@/lib/agents/registry";
 import type { BookingDraft } from "@/lib/booking/types";
-import type { ChatMessageDTO } from "@/lib/chat/types";
+import type { ChatMessageDTO, DelegationStepDTO } from "@/lib/chat/types";
 import type { FoodProduct } from "@/lib/pet-data/format";
 import { Markdown } from "./markdown";
 
@@ -201,9 +202,13 @@ export function ChatMessageView({
   }
 
   const agentLabel = getAgentLabel(message.agentId);
+  const delegationSteps = data?.delegationSteps;
 
   return (
     <div className="flex max-w-[min(100%,46rem)] flex-col gap-3">
+      {delegationSteps && delegationSteps.length > 0 ? (
+        <DelegationActivity steps={delegationSteps} />
+      ) : null}
       <div className="flex items-start gap-3">
         <AssistantAvatar />
         <div
@@ -260,20 +265,31 @@ export function ChatMessageView({
   );
 }
 
-export function PendingMessage({ agentLabel }: { agentLabel?: string }) {
+export function PendingMessage({
+  agentLabel,
+  delegationSteps,
+}: {
+  agentLabel?: string;
+  delegationSteps?: DelegationStepDTO[];
+}) {
   return (
-    <div className="flex max-w-[min(100%,46rem)] items-start gap-3">
-      <AssistantAvatar />
-      <div className="flex items-center gap-3 rounded-2xl rounded-tl-md border border-white/60 bg-white/85 px-5 py-4 shadow-[0_4px_20px_rgba(29,53,87,0.05)] backdrop-blur-md dark:border-white/10 dark:bg-card/90">
-        <div
-          aria-hidden
-          className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent"
-        />
-        {agentLabel ? (
-          <span className="text-sm text-muted-foreground">
-            {agentLabel} is thinking…
-          </span>
-        ) : null}
+    <div className="flex max-w-[min(100%,46rem)] flex-col gap-3">
+      {delegationSteps && delegationSteps.length > 0 ? (
+        <DelegationActivity pending steps={delegationSteps} />
+      ) : null}
+      <div className="flex items-start gap-3">
+        <AssistantAvatar />
+        <div className="flex items-center gap-3 rounded-2xl rounded-tl-md border border-white/60 bg-white/85 px-5 py-4 shadow-[0_4px_20px_rgba(29,53,87,0.05)] backdrop-blur-md dark:border-white/10 dark:bg-card/90">
+          <div
+            aria-hidden
+            className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent"
+          />
+          {agentLabel ? (
+            <span className="text-sm text-muted-foreground">
+              {agentLabel} is thinking…
+            </span>
+          ) : null}
+        </div>
       </div>
     </div>
   );

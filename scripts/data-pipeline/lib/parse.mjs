@@ -49,7 +49,10 @@ const PRODUCT_SECTION_HEADINGS = [
   ["nutritionalAdditives", /^nutritional additives?:?$/i],
   ["calorieContent", /^calorie content:?$/i],
   ["suitableFor", /^suitable for:?$/i],
-  ["feedingInstructions", /^(feeding instructions|feeding guide|directions):?$/i],
+  [
+    "feedingInstructions",
+    /^(feeding instructions|feeding guide|directions):?$/i,
+  ],
   ["countryOfOrigin", /^country of origin:?$/i],
   ["storage", /^storage:?$/i],
 ];

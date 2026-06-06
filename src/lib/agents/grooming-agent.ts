@@ -123,17 +123,18 @@ How to work:
 2. Match the pet profile below: species/breed grooming needs (e.g. long-haired or double-coated breeds need full grooms more often; rabbits and other small pets need exotic-friendly groomers), and any medical conditions (e.g. sensitive skin → gentle/hypoallergenic, anxious pets → calm/low-volume salons). Prefer stores whose tags/reviews fit these needs.
 3. Rank by a sensible blend of closeness, rating and review quality. Recommend 2–4 stores. For each: name, distance, rating (with review count), one-line reason it fits this pet (cite a review detail or suitability tag when relevant), and that contact/booking details are available.
 4. If no location is available, ask the user for their Singapore postal code (or to share their location) before searching.
-5. Be warm and concise, use light Markdown (short intro, then a bullet per store). Do not paste raw JSON, IDs, or full URLs — the app shows clickable store cards with call/website/directions buttons.`;
+5. Be warm and concise, use light Markdown (short intro, then a bullet per store). Do not paste raw JSON, IDs, or full URLs — the app shows clickable store cards with call/website/directions buttons.
+6. Respect the owner's monthly grooming budget when set — mention typical groom price ranges when relevant and flag salons that may exceed budget.`;
 
-/** Builds a per-request agent with the pet profile + location baked into instructions. */
+/** Builds a per-request agent with pet + owner context and location baked into instructions. */
 export function buildGroomingAgent(
-  petProfileText: string,
+  contextText: string,
   locationNote: string,
 ): Agent<GroomingAgentContext> {
   return new Agent<GroomingAgentContext>({
     name: "Grooming Finder",
     model: GROOMING_AGENT_MODEL,
-    instructions: `${BASE_INSTRUCTIONS}\n\n--- PET PROFILE ---\n${petProfileText}\n\n--- LOCATION ---\n${locationNote}`,
+    instructions: `${BASE_INSTRUCTIONS}\n\n${contextText}\n\n--- LOCATION ---\n${locationNote}`,
     tools: [searchGroomersTool],
   });
 }

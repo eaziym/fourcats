@@ -106,17 +106,16 @@ How to work:
 3. If a pet PHOTO is provided, use it to estimate species, breed, rough size and body condition (under/ideal/overweight) and factor that in — but say it's an estimate from the photo.
 4. Recommend 2–4 specific products. For each, give: product name + brand, a one-line reason it fits this pet, the price (from the data), and that it can be bought via its link. Add a short safety note when a medical condition or restriction is relevant.
 5. Be warm, concise, and use light Markdown (short intro, then a bullet per product). Do not paste raw JSON, IDs, or long ingredient dumps. End with a brief reminder to consult a vet for medical diets.
+6. Respect the owner's monthly food budget when set — prefer in-budget products and clearly flag when all good matches exceed it.
 
 The app shows clickable product cards (name, price, buy button) for every product you found, so you don't need to repeat full URLs — refer to products by name.`;
 
-/** Builds a per-request agent with the pet profile baked into instructions. */
-export function buildFoodAgent(
-  petProfileText: string,
-): Agent<FoodAgentContext> {
+/** Builds a per-request agent with pet + owner context baked into instructions. */
+export function buildFoodAgent(contextText: string): Agent<FoodAgentContext> {
   return new Agent<FoodAgentContext>({
     name: "Food Finder",
     model: FOOD_AGENT_MODEL,
-    instructions: `${BASE_INSTRUCTIONS}\n\n--- PET PROFILE ---\n${petProfileText}`,
+    instructions: `${BASE_INSTRUCTIONS}\n\n${contextText}`,
     tools: [searchFoodTool],
   });
 }

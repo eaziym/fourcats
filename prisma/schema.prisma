@@ -34,6 +34,21 @@ model Pet {
   @@index([userId])
 }
 
+model UserSettings {
+  userId                     String   @id
+  displayName                String?
+  gender                     String?
+  monthlyFoodBudgetCents     Int?     @map("monthly_food_budget_cents")
+  monthlyGroomingBudgetCents Int?     @map("monthly_grooming_budget_cents")
+  monthlyVetBudgetCents      Int?     @map("monthly_vet_budget_cents")
+  monthlySuppliesBudgetCents Int?     @map("monthly_supplies_budget_cents")
+  currency                   String   @default("SGD")
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  @@map("user_settings")
+}
+
 model CareLog {
   id        String   @id @default(cuid())
   petId     String

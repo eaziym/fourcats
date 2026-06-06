@@ -34,7 +34,9 @@ async function main() {
     let count = "";
     if (ok) {
       try {
-        const r = await client.query(`select count(*)::int as n from public."${name}"`);
+        const r = await client.query(
+          `select count(*)::int as n from public."${name}"`,
+        );
         count = `  rows=${r.rows[0].n}`;
       } catch (e) {
         count = `  (count failed: ${e.message})`;
@@ -43,14 +45,18 @@ async function main() {
     console.log(`${ok ? "✓" : "✗"} ${name}${count}`);
   }
 
-  const extras = [...present].filter((t) => !EXPECTED_TABLES.includes(t) && t !== "_prisma_migrations");
+  const extras = [...present].filter(
+    (t) => !EXPECTED_TABLES.includes(t) && t !== "_prisma_migrations",
+  );
   if (extras.length) console.log("\nother public tables:", extras.join(", "));
 
   const { rows: exts } = await client.query(
     `select extname from pg_extension where extname in ('vector','pgcrypto') order by extname`,
   );
   console.log("\n=== extensions ===");
-  console.log(exts.map((e) => e.extname).join(", ") || "(none of vector/pgcrypto)");
+  console.log(
+    exts.map((e) => e.extname).join(", ") || "(none of vector/pgcrypto)",
+  );
 
   const { rows: fns } = await client.query(
     `select proname from pg_proc where proname in ('match_knowledge_chunks','nearby_service_places') order by proname`,
@@ -65,11 +71,17 @@ async function main() {
     );
     console.log("\n=== _prisma_migrations ledger ===");
     for (const m of migs) {
-      const state = m.rolled_back_at ? "ROLLED BACK" : m.finished_at ? "applied" : "PENDING";
+      const state = m.rolled_back_at
+        ? "ROLLED BACK"
+        : m.finished_at
+          ? "applied"
+          : "PENDING";
       console.log(`- ${m.migration_name} [${state}]`);
     }
   } else {
-    console.log("\n=== _prisma_migrations ledger ===\n(no _prisma_migrations table)");
+    console.log(
+      "\n=== _prisma_migrations ledger ===\n(no _prisma_migrations table)",
+    );
   }
 
   await client.end();

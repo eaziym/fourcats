@@ -5,7 +5,7 @@
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "prisma generate && prisma migrate deploy && next dev",
-    "build": "next build",
+    "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "probe:products": "node scripts/data-pipeline/probe-product-providers.mjs",
     "db:apply:pipeline": "node scripts/data-pipeline/apply-sql.mjs scripts/data-pipeline/sql/pipeline-schema.sql",

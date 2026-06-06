@@ -2,7 +2,15 @@ export type FormStatus = "published" | "draft" | "archived";
 
 export interface FormField {
   id: string;
-  type: "text" | "textarea" | "number" | "email" | "select" | "checkbox" | "radio" | "date";
+  type:
+    | "text"
+    | "textarea"
+    | "number"
+    | "email"
+    | "select"
+    | "checkbox"
+    | "radio"
+    | "date";
   label: string;
   required: boolean;
   options?: string[];

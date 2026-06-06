@@ -176,6 +176,41 @@
   background: var(--muted);
   color: var(--foreground);
   font-family: var(--font-sans);
+  /* Stay below app chrome (top bar, dropdowns, popovers). */
+  z-index: 0;
+}
+
+/* Leaflet defaults (400–700) beat Radix overlays (z-50). Keep map layers low. */
+.discovery-map .leaflet-pane {
+  z-index: 1 !important;
+}
+
+.discovery-map .leaflet-tile-pane {
+  z-index: 1 !important;
+}
+
+.discovery-map .leaflet-overlay-pane {
+  z-index: 2 !important;
+}
+
+.discovery-map .leaflet-shadow-pane {
+  z-index: 3 !important;
+}
+
+.discovery-map .leaflet-marker-pane {
+  z-index: 4 !important;
+}
+
+.discovery-map .leaflet-tooltip-pane {
+  z-index: 5 !important;
+}
+
+.discovery-map .leaflet-popup-pane {
+  z-index: 6 !important;
+}
+
+.discovery-map .leaflet-control-container {
+  z-index: 7 !important;
 }
 
 .discovery-map .leaflet-control-zoom {

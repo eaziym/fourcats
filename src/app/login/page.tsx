@@ -34,7 +34,10 @@ export default async function LoginPage({
         <LoginForm nextPath={params.next} serverError={params.error} />
         <p className="mt-8 text-sm text-muted-foreground">
           No account?{" "}
-          <Link className="font-medium text-primary underline-offset-4 hover:underline" href="/signup">
+          <Link
+            className="font-medium text-primary underline-offset-4 hover:underline"
+            href="/signup"
+          >
             Create one
           </Link>
         </p>

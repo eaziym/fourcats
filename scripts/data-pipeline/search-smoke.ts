@@ -31,7 +31,9 @@ async function main() {
     limit: 3,
   });
   for (const f of b) {
-    console.log(`  [${f.similarity.toFixed(3)}] ${f.title} — ${money(f.priceMinCents)}`);
+    console.log(
+      `  [${f.similarity.toFixed(3)}] ${f.title} — ${money(f.priceMinCents)}`,
+    );
     console.log(`      ${f.snippet.slice(0, 140).replace(/\n/g, " ")}...`);
   }
 
@@ -39,11 +41,15 @@ async function main() {
   console.log(" ", postalToLatLng("520512"));
 
   const loc = postalToLatLng("520512") ?? { lat: 1.3496, lng: 103.943 };
-  console.log("\n== searchGroomers near Tampines (empty until Places enabled) ==");
+  console.log(
+    "\n== searchGroomers near Tampines (empty until Places enabled) ==",
+  );
   const g = await searchGroomers({ ...loc, limit: 3 });
   console.log(`  ${g.length} groomers`);
   for (const p of g) {
-    console.log(`  ${p.name} — ${p.rating}★ (${p.userRatingCount}) ${p.distanceKm.toFixed(1)}km`);
+    console.log(
+      `  ${p.name} — ${p.rating}★ (${p.userRatingCount}) ${p.distanceKm.toFixed(1)}km`,
+    );
   }
 
   console.log("\n== searchVets near Tampines ==");

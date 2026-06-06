@@ -659,7 +659,9 @@ function FloatingShell({
         <div
           className={cn(
             "transition-[max-height] duration-300 ease-in-out",
-            expanded ? "max-h-[60vh] overflow-y-auto" : "max-h-48 overflow-hidden",
+            expanded
+              ? "max-h-[60vh] overflow-y-auto"
+              : "max-h-48 overflow-hidden",
           )}
         >
           {children}

@@ -1,15 +1,14 @@
 "use client";
 
-import { CalendarDays, HelpCircle, Settings } from "lucide-react";
+import { HelpCircle, Settings } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { ModeToggle } from "@/components/mode-toggle";
-import { Button } from "@/components/ui/button";
 import { navItems } from "@/lib/pet-data";
 import { cn } from "@/lib/utils";
 import { BrandMascot } from "./mascot";
-import { PetSwitcher } from "./pet-switcher";
 import { SignOutButton } from "./sign-out-button";
+import { SuggestedQuestionBox } from "./suggested-question-box";
 
 function SidebarGrip({
   onMouseDown,
@@ -47,26 +46,20 @@ export function SidebarContent({
 }) {
   return (
     <>
-      <div className="border-b border-sidebar-border pb-4">
-        <div
-          className={cn(
-            "flex h-[66px] items-center gap-3 px-2",
-            variant === "drawer" && "justify-center text-center",
-          )}
-        >
-          <BrandMascot size={40} />
-          <div className="min-w-0 text-left">
-            <p className="font-llp-display text-base font-bold leading-tight tracking-tight text-primary">
-              Little Lovely Pets
-            </p>
-            <p className="text-[11px] font-medium text-muted-foreground">
-              Singapore AI care
-            </p>
-          </div>
-        </div>
-
-        <div className="mx-1 mt-1">
-          <PetSwitcher variant="sidebar" />
+      <div
+        className={cn(
+          "flex h-[66px] shrink-0 items-center gap-3 border-b border-sidebar-border px-2",
+          variant === "drawer" && "justify-center text-center",
+        )}
+      >
+        <BrandMascot size={40} />
+        <div className="min-w-0 text-left">
+          <p className="font-llp-display text-base font-bold leading-tight tracking-tight text-primary">
+            Little Lovely Pets
+          </p>
+          <p className="text-[11px] font-medium text-muted-foreground">
+            Singapore AI care
+          </p>
         </div>
       </div>
 
@@ -95,16 +88,7 @@ export function SidebarContent({
       </nav>
 
       <div className="mt-auto space-y-3 border-t border-sidebar-border p-3">
-        <Button
-          className="h-10 w-full rounded-2xl bg-[var(--llp-tertiary)] font-semibold text-white shadow-md hover:bg-[var(--llp-tertiary)]/90 dark:bg-secondary dark:text-secondary-foreground dark:hover:bg-secondary/90"
-          size="sm"
-          asChild
-        >
-          <Link href="/discovery" onClick={onNavigate}>
-            <CalendarDays className="size-4" />
-            Book vet
-          </Link>
-        </Button>
+        <SuggestedQuestionBox onNavigate={onNavigate} />
         <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card/50 px-2 py-1">
           <span className="px-2 text-xs font-medium text-muted-foreground">
             Theme

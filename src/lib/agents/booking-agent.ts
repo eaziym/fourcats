@@ -122,14 +122,14 @@ How to work:
 5. Be warm and concise. Use light Markdown. Never invent emails, phone numbers, or URLs — only use tool results.`;
 
 export function buildBookingAgent(
-  petProfileText: string,
+  contextText: string,
   recentPlacesNote: string,
   presetNote: string,
 ): Agent<BookingAgentContext> {
   return new Agent<BookingAgentContext>({
     name: "Booking assistant",
     model: BOOKING_AGENT_MODEL,
-    instructions: `${BASE_INSTRUCTIONS}\n\n--- PET PROFILE ---\n${petProfileText}\n\n--- RECENT PLACES ---\n${recentPlacesNote}\n\n--- PRESET ---\n${presetNote}`,
+    instructions: `${BASE_INSTRUCTIONS}\n\n${contextText}\n\n--- RECENT PLACES ---\n${recentPlacesNote}\n\n--- PRESET ---\n${presetNote}`,
     tools: [lookupPlaceTool, createBookingDraftTool],
   });
 }

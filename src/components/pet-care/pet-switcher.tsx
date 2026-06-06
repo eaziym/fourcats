@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ChevronsUpDown } from "lucide-react";
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { setActivePet } from "@/app/(main)/active-pet-actions";
 import { usePetCare } from "@/components/pet-care/pet-care-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -34,7 +34,7 @@ function activeSubtitle(pet: PetDTO): string {
 const SIDEBAR_CARD =
   "flex items-center gap-3 rounded-xl border border-border/60 bg-muted/30 px-2 py-2";
 const TOPBAR_PILL =
-  "flex items-center gap-2 rounded-[999px] border border-border bg-muted/60 py-1.5 pr-3 pl-1.5";
+  "flex h-10 items-center gap-2 rounded-[999px] border border-border bg-muted/60 py-0 pr-3 pl-1.5";
 
 export function PetSwitcher({
   variant = "sidebar",
@@ -42,7 +42,12 @@ export function PetSwitcher({
   variant?: "sidebar" | "topbar";
 }) {
   const { pet, pets } = usePetCare();
+  const [mounted, setMounted] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const name = pet?.name ?? "Pet";
   const avatarSrc =
@@ -88,8 +93,19 @@ export function PetSwitcher({
   const inner = variant === "topbar" ? topbarInner : sidebarInner;
   const cardClass = variant === "topbar" ? TOPBAR_PILL : SIDEBAR_CARD;
 
-  if (!canSwitch) {
-    return <div className={cardClass}>{inner}</div>;
+  if (!canSwitch || !mounted) {
+    return (
+      <div
+        className={cn(
+          cardClass,
+          canSwitch &&
+            "cursor-pointer transition-colors hover:bg-muted disabled:opacity-60",
+          variant === "sidebar" && canSwitch && "w-full",
+        )}
+      >
+        {inner}
+      </div>
+    );
   }
 
   return (

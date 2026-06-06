@@ -2,7 +2,6 @@
 
 import { ImagePlus, MapPin, Send, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { AgentMultiSelect } from "@/components/assistant/agent-multi-select";
 import {
   ChatMessageView,
   PendingMessage,
@@ -11,18 +10,14 @@ import { ContextSidebar } from "@/components/assistant/context-sidebar";
 import { SessionsSidebar } from "@/components/assistant/sessions-sidebar";
 import { usePetCare } from "@/components/pet-care/pet-care-provider";
 import { PetCareShell } from "@/components/pet-care/shell";
-import {
-  type AssistantAgentId,
-  getAgentLabel,
-  getAssistantAgent,
-} from "@/lib/agents/registry";
+import { getAgentLabel } from "@/lib/agents/registry";
 import type { BookingDraft } from "@/lib/booking/types";
 import type {
   ChatMessageData,
   ChatMessageDTO,
   ChatSessionSummary,
+  DelegationStepDTO,
 } from "@/lib/chat/types";
-import type { FoodProduct, ServicePlaceCard } from "@/lib/pet-data/format";
 import { cn } from "@/lib/utils";
 import {
   appendChatMessages,
@@ -31,11 +26,6 @@ import {
   listChatSessions,
   loadChatSession,
 } from "./session-actions";
-
-type RunResult = { content: string; data?: ChatMessageData | null };
-
-const BOOKING_INTENT_RE =
-  /\b(book(ing)?|appointment|reserve|reservation|schedule)\b/i;
 
 function extractRecentPlaces(
   msgs: ChatMessageDTO[],
@@ -49,16 +39,12 @@ function extractRecentPlaces(
   return [...byId.entries()].map(([id, name]) => ({ id, name }));
 }
 
-function looksLikeBookingIntent(text: string): boolean {
-  return BOOKING_INTENT_RE.test(text);
-}
-
 async function runBookingAgent(args: {
   message: string;
   servicePlaceId?: string;
   requestedService?: string;
   recentPlaces: { id: string; name: string }[];
-}): Promise<RunResult> {
+}): Promise<{ content: string; data?: ChatMessageData | null }> {
   try {
     const res = await fetch("/api/agents/booking", {
       method: "POST",
@@ -96,154 +82,6 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
-async function runAgent(
-  agentId: AssistantAgentId,
-  args: {
-    text: string;
-    file: File | null;
-    coords: { lat: number; lng: number } | null;
-    history: { role: "user" | "assistant"; content: string }[];
-  },
-): Promise<RunResult> {
-  const { text, file, coords, history } = args;
-  try {
-    if (agentId === "meme") {
-      if (!file) {
-        return {
-          content: "I need a pet photo to make a meme — attach one and resend.",
-          data: { isError: true },
-        };
-      }
-      const fd = new FormData();
-      fd.set("image", file);
-      fd.set("message", text || "Create a funny, shareable meme of my pet.");
-      const res = await fetch("/api/agents/meme", { method: "POST", body: fd });
-      const data = (await res.json()) as {
-        assistantText?: string;
-        memeImageDataUrl?: string;
-        toolError?: string;
-        error?: string;
-      };
-      if (!res.ok)
-        throw new Error(data.error || `Request failed (${res.status})`);
-      return {
-        content:
-          data.assistantText ||
-          (data.memeImageDataUrl
-            ? "Here's your meme! 🐾"
-            : data.toolError || "No image returned."),
-        data: { imageUrl: data.memeImageDataUrl },
-      };
-    }
-
-    if (agentId === "food") {
-      const fd = new FormData();
-      fd.set(
-        "message",
-        text ||
-          "Suggest the best food for my pet, with prices and where to buy.",
-      );
-      if (file) fd.set("image", file);
-      const res = await fetch("/api/agents/food", { method: "POST", body: fd });
-      const data = (await res.json()) as {
-        assistantText?: string;
-        products?: FoodProduct[];
-        toolError?: string;
-        error?: string;
-      };
-      if (!res.ok)
-        throw new Error(data.error || `Request failed (${res.status})`);
-      return {
-        content:
-          data.assistantText ||
-          data.toolError ||
-          "I couldn't find a good match just now — add a bit more detail.",
-        data: { products: data.products },
-      };
-    }
-
-    if (agentId === "vet") {
-      const fd = new FormData();
-      fd.set(
-        "message",
-        text ||
-          "My pet isn't feeling well — assess the symptoms and suggest what to do and which vet to see.",
-      );
-      if (file) fd.set("image", file);
-      if (coords) {
-        fd.set("lat", String(coords.lat));
-        fd.set("lng", String(coords.lng));
-      }
-      const res = await fetch("/api/agents/vet", { method: "POST", body: fd });
-      const data = (await res.json()) as {
-        assistantText?: string;
-        places?: ServicePlaceCard[];
-        toolError?: string;
-        error?: string;
-      };
-      if (!res.ok)
-        throw new Error(data.error || `Request failed (${res.status})`);
-      return {
-        content:
-          data.assistantText ||
-          data.toolError ||
-          "I couldn't assess that just now — try describing the symptoms in a bit more detail.",
-        data: { places: data.places },
-      };
-    }
-
-    if (agentId === "grooming") {
-      const res = await fetch("/api/agents/grooming", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          message:
-            text || "Suggest the best grooming stores near me for my pet.",
-          lat: coords?.lat,
-          lng: coords?.lng,
-        }),
-      });
-      const data = (await res.json()) as {
-        assistantText?: string;
-        places?: ServicePlaceCard[];
-        toolError?: string;
-        error?: string;
-      };
-      if (!res.ok)
-        throw new Error(data.error || `Request failed (${res.status})`);
-      return {
-        content:
-          data.assistantText ||
-          data.toolError ||
-          "I couldn't find a good match just now — try sharing your location.",
-        data: { places: data.places },
-      };
-    }
-
-    // general
-    const res = await fetch("/api/agents/general", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        message: text || "Share a helpful care tip for my pet today.",
-        history,
-      }),
-    });
-    const data = (await res.json()) as {
-      assistantText?: string;
-      error?: string;
-    };
-    if (!res.ok)
-      throw new Error(data.error || `Request failed (${res.status})`);
-    return {
-      content: data.assistantText || "I'm not sure how to help with that yet.",
-    };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Something went wrong.";
-    return { content: `Sorry — ${msg}`, data: { isError: true } };
-  }
-}
-
 export default function AssistantPage() {
   const { pet } = usePetCare();
 
@@ -253,16 +91,15 @@ export default function AssistantPage() {
   const [loadingSession, setLoadingSession] = useState(false);
   const [creating, setCreating] = useState(false);
 
-  const [selectedAgents, setSelectedAgents] = useState<AssistantAgentId[]>([
-    "general",
-  ]);
   const [input, setInput] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     null,
   );
   const [locating, setLocating] = useState(false);
-  const [pendingAgents, setPendingAgents] = useState<AssistantAgentId[]>([]);
+  const [pendingSteps, setPendingSteps] = useState<DelegationStepDTO[] | null>(
+    null,
+  );
   const [bookingPending, setBookingPending] = useState(false);
   const [bookingPlaceId, setBookingPlaceId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -271,7 +108,14 @@ export default function AssistantPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Load session list on mount and open the most recent one.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q")?.trim();
+    if (!q) return;
+    setInput(q);
+    window.history.replaceState(null, "", "/assistant");
+  }, []);
+
   useEffect(() => {
     let active = true;
     (async () => {
@@ -293,7 +137,7 @@ export default function AssistantPage() {
     };
   }, []);
 
-  const scrollKey = `${messages.length}-${pendingAgents.length}-${bookingPending}-${sessionId}`;
+  const scrollKey = `${messages.length}-${pendingSteps?.length ?? 0}-${bookingPending}-${sessionId}`;
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll when transcript changes
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -335,15 +179,6 @@ export default function AssistantPage() {
       setSessionId(null);
       setMessages([]);
     }
-  }
-
-  function toggleAgent(id: AssistantAgentId) {
-    setSelectedAgents((prev) => {
-      if (prev.includes(id)) {
-        return prev.length > 1 ? prev.filter((a) => a !== id) : prev;
-      }
-      return [...prev, id];
-    });
   }
 
   function handleUseLocation() {
@@ -405,7 +240,23 @@ export default function AssistantPage() {
       role: "assistant",
       agentId: "booking",
       content: result.content,
-      data: result.data ?? null,
+      data: {
+        ...result.data,
+        delegationSteps: [
+          {
+            agentId: "general",
+            label: getAgentLabel("general") ?? "Pet assistant",
+            status: "done",
+            reasoning: "Booking request detected — delegating to booking.",
+          },
+          {
+            agentId: "booking",
+            label: getAgentLabel("booking") ?? "Booking assistant",
+            status: "done",
+            tools: ["create_booking_draft"],
+          },
+        ],
+      },
       createdAt: new Date().toISOString(),
     };
     setBookingPending(false);
@@ -470,18 +321,9 @@ export default function AssistantPage() {
     const text = input.trim();
     const attached = file;
     if (!text && !attached) return;
-    if (
-      selectedAgents.includes("meme") &&
-      !attached &&
-      selectedAgents.length === 1
-    ) {
-      setError("The Meme agent needs a pet photo — attach one to continue.");
-      return;
-    }
 
     setError(null);
 
-    // Ensure a session exists.
     let sid = sessionId;
     if (!sid) {
       const s = await createChatSession();
@@ -516,47 +358,70 @@ export default function AssistantPage() {
     const history = messages
       .filter((m) => m.content.trim())
       .map((m) => ({
-        role: m.role,
+        role: m.role as "user" | "assistant",
         content: m.content,
       }));
+
+    const recentPlaces = extractRecentPlaces([...messages, userMsg]);
 
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
 
-    const agents = [...selectedAgents];
     setBusy(true);
-    setPendingAgents(agents);
+    setPendingSteps([
+      {
+        agentId: "general",
+        label: getAgentLabel("general") ?? "Pet assistant",
+        status: "running",
+        reasoning: "Analyzing your request…",
+      },
+    ]);
 
-    const collected: ChatMessageDTO[] = [];
-    await Promise.all(
-      agents.map(async (agentId) => {
-        const result = await runAgent(agentId, {
-          text,
-          file: attached,
-          coords,
-          history,
-        });
-        const assistantMsg: ChatMessageDTO = {
-          id: `a-${agentId}-${Date.now()}`,
-          role: "assistant",
-          agentId,
-          content: result.content,
-          data: result.data ?? null,
-          createdAt: new Date().toISOString(),
-        };
-        collected.push(assistantMsg);
-        setMessages((prev) => [...prev, assistantMsg]);
-        setPendingAgents((prev) => prev.filter((a) => a !== agentId));
-      }),
-    );
-
-    setBusy(false);
-    setPendingAgents([]);
-
-    // Persist the exchange, then refresh the session list (title + ordering).
     try {
+      const fd = new FormData();
+      fd.set("message", text);
+      fd.set("history", JSON.stringify(history));
+      fd.set("recentPlaces", JSON.stringify(recentPlaces));
+      if (attached) fd.set("image", attached);
+      if (coords) {
+        fd.set("lat", String(coords.lat));
+        fd.set("lng", String(coords.lng));
+      }
+
+      const res = await fetch("/api/agents/orchestrate", {
+        method: "POST",
+        body: fd,
+      });
+      const data = (await res.json()) as {
+        steps?: DelegationStepDTO[];
+        messages?: {
+          agentId: string;
+          content: string;
+          data?: ChatMessageData | null;
+        }[];
+        error?: string;
+      };
+
+      if (!res.ok) {
+        throw new Error(data.error || `Request failed (${res.status})`);
+      }
+
+      const assistantMsgs: ChatMessageDTO[] = (data.messages ?? []).map(
+        (m, i) => ({
+          id: `a-${m.agentId}-${Date.now()}-${i}`,
+          role: "assistant" as const,
+          agentId: m.agentId,
+          content: m.content,
+          data: m.data ?? null,
+          createdAt: new Date().toISOString(),
+        }),
+      );
+
+      setPendingSteps(null);
+      setMessages((prev) => [...prev, ...assistantMsgs]);
+
       await appendChatMessages(sid, [
         {
           role: "user",
@@ -564,7 +429,7 @@ export default function AssistantPage() {
           content: text,
           data: userMsg.data,
         },
-        ...collected.map((m) => ({
+        ...assistantMsgs.map((m) => ({
           role: m.role,
           agentId: m.agentId,
           content: m.content,
@@ -573,57 +438,16 @@ export default function AssistantPage() {
       ]);
       const list = await listChatSessions();
       setSessions(list);
-    } catch {
-      /* persistence is best-effort; live transcript already shown */
-    }
-
-    // Implicit booking agent — not selectable, runs on booking intent or place context.
-    const recentPlaces = extractRecentPlaces([
-      ...messages,
-      userMsg,
-      ...collected,
-    ]);
-    const shouldBook =
-      looksLikeBookingIntent(text) &&
-      (recentPlaces.length > 0 ||
-        /\b(at|with)\s+\w/i.test(text) ||
-        selectedAgents.some((a) => a === "grooming" || a === "vet"));
-
-    if (shouldBook) {
-      setBookingPending(true);
-      const bookingResult = await runBookingAgent({
-        message: text,
-        recentPlaces,
-      });
-      setBookingPending(false);
-      const bookingMsg: ChatMessageDTO = {
-        id: `a-booking-${Date.now()}`,
-        role: "assistant",
-        agentId: "booking",
-        content: bookingResult.content,
-        data: bookingResult.data ?? null,
-        createdAt: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, bookingMsg]);
-      try {
-        await appendChatMessages(sid, [
-          {
-            role: bookingMsg.role,
-            agentId: bookingMsg.agentId,
-            content: bookingMsg.content,
-            data: bookingMsg.data,
-          },
-        ]);
-        const list = await listChatSessions();
-        setSessions(list);
-      } catch {
-        /* best-effort */
-      }
+    } catch (err) {
+      setPendingSteps(null);
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      setError(msg);
+    } finally {
+      setBusy(false);
     }
   }
 
-  const isEmpty = messages.length === 0 && pendingAgents.length === 0;
-  const activeAgentId = selectedAgents[0] ?? "general";
+  const isEmpty = messages.length === 0 && !pendingSteps && !bookingPending;
 
   return (
     <PetCareShell active="assistant" lockViewport>
@@ -655,8 +479,9 @@ export default function AssistantPage() {
                       : "How can I help?"}
                   </h2>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Pick one or more agents below, then ask away. Choose several
-                    to delegate the same request to each of them.
+                    Ask anything about care, food, grooming, vets, or memes —
+                    the pet assistant will delegate to the right specialist
+                    automatically.
                   </p>
                 </div>
               ) : (
@@ -669,12 +494,12 @@ export default function AssistantPage() {
                       onBookPlace={handleBookPlace}
                     />
                   ))}
-                  {pendingAgents.map((a) => (
+                  {pendingSteps ? (
                     <PendingMessage
-                      agentLabel={getAssistantAgent(a)?.label}
-                      key={`pending-${a}`}
+                      agentLabel={getAgentLabel("general")}
+                      delegationSteps={pendingSteps}
                     />
-                  ))}
+                  ) : null}
                   {bookingPending ? (
                     <PendingMessage agentLabel={getAgentLabel("booking")} />
                   ) : null}
@@ -688,11 +513,6 @@ export default function AssistantPage() {
               className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 py-4 md:px-6"
               onSubmit={handleSend}
             >
-              <AgentMultiSelect
-                onToggle={toggleAgent}
-                selected={selectedAgents}
-              />
-
               {error ? (
                 <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
                   {error}
@@ -781,8 +601,8 @@ export default function AssistantPage() {
                   }}
                   placeholder={
                     pet
-                      ? `Message your agents about ${pet.name}…`
-                      : "Message your agents…"
+                      ? `Ask about ${pet.name}'s care, food, grooming, or health…`
+                      : "Ask about your pet's care…"
                   }
                   rows={1}
                   value={input}
@@ -801,7 +621,7 @@ export default function AssistantPage() {
           </div>
         </section>
 
-        <ContextSidebar activeAgentId={activeAgentId} />
+        <ContextSidebar />
       </main>
     </PetCareShell>
   );

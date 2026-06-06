@@ -40,12 +40,12 @@ function parseArgs(argv) {
   for (let i = 2; i < argv.length; i += 1) {
     const a = argv[i];
     const next = argv[i + 1];
-    if (a === "--limit" && next) args.limit = Number(next), (i += 1);
+    if (a === "--limit" && next) (args.limit = Number(next)), (i += 1);
     else if (a === "--collections-limit" && next)
-      args.collectionsLimit = Number(next), (i += 1);
+      (args.collectionsLimit = Number(next)), (i += 1);
     else if (a === "--per-collection" && next)
-      args.perCollection = Number(next), (i += 1);
-    else if (a === "--delay" && next) args.delay = Number(next), (i += 1);
+      (args.perCollection = Number(next)), (i += 1);
+    else if (a === "--delay" && next) (args.delay = Number(next)), (i += 1);
     else if (a === "--dry-run") args.dryRun = true;
   }
   return args;
@@ -89,7 +89,11 @@ function petTypeFrom(text) {
     return "fish";
   if (/turtle|tortoise|terrapin|reptile|lizard|snake|gecko|amphibian/.test(t))
     return "reptile";
-  if (/hamster|guinea|chinchilla|ferret|hedgehog|gerbil|rodent|small-?animal|small-?pet/.test(t))
+  if (
+    /hamster|guinea|chinchilla|ferret|hedgehog|gerbil|rodent|small-?animal|small-?pet/.test(
+      t,
+    )
+  )
     return "small_pet";
   return null;
 }
@@ -116,7 +120,9 @@ function priceCents(value) {
 async function fetchFoodCollections(limit) {
   const out = [];
   for (let page = 1; page <= 6; page += 1) {
-    const json = await fetchJson(`${BASE}/collections.json?limit=250&page=${page}`);
+    const json = await fetchJson(
+      `${BASE}/collections.json?limit=250&page=${page}`,
+    );
     const cols = json?.collections ?? [];
     for (const c of cols) {
       if (isFoodCollection(c.handle)) out.push(c.handle);
@@ -154,8 +160,10 @@ function normalize(product, petTypeHint, handleForCategory) {
   // Prefer per-product signal (title/tags) over the collection hint so e.g. a
   // turtle food in a mixed "bird-fish-reptile" collection types correctly.
   const petType =
-    petTypeFrom(`${product.title} ${(product.tags || []).join(" ")}`) || petTypeHint;
-  const category = product.product_type?.trim() || foodCategory(handleForCategory);
+    petTypeFrom(`${product.title} ${(product.tags || []).join(" ")}`) ||
+    petTypeHint;
+  const category =
+    product.product_type?.trim() || foodCategory(handleForCategory);
 
   const tags = [
     ...new Set(
@@ -173,8 +181,12 @@ function normalize(product, petTypeHint, handleForCategory) {
     pet_type: petType,
     product_type: category,
     tags,
-    price_min_cents: prices.length ? Math.round(Math.min(...prices) * 100) : null,
-    price_max_cents: prices.length ? Math.round(Math.max(...prices) * 100) : null,
+    price_min_cents: prices.length
+      ? Math.round(Math.min(...prices) * 100)
+      : null,
+    price_max_cents: prices.length
+      ? Math.round(Math.max(...prices) * 100)
+      : null,
     available: variants.some((v) => v.available),
     description: stripHtml(product.body_html).slice(0, 8000) || null,
     ingredients: sections.ingredients || sections.composition || null,
@@ -228,17 +240,37 @@ on conflict (product_id, source_variant_id) do update set
 
 async function upsertProduct(pool, p) {
   const { rows } = await pool.query(PRODUCT_UPSERT, [
-    p.source, p.source_product_id, p.handle, p.url, p.title, p.brand,
-    p.pet_type, p.product_type, p.tags, p.price_min_cents, p.price_max_cents,
-    p.available, p.description, p.ingredients, p.nutritional_analysis,
-    p.suitable_for, p.feeding_instructions, p.country_of_origin,
+    p.source,
+    p.source_product_id,
+    p.handle,
+    p.url,
+    p.title,
+    p.brand,
+    p.pet_type,
+    p.product_type,
+    p.tags,
+    p.price_min_cents,
+    p.price_max_cents,
+    p.available,
+    p.description,
+    p.ingredients,
+    p.nutritional_analysis,
+    p.suitable_for,
+    p.feeding_instructions,
+    p.country_of_origin,
     JSON.stringify(p.raw),
   ]);
   const productId = rows[0].id;
   for (const v of p.variants) {
     await pool.query(VARIANT_UPSERT, [
-      productId, v.source_variant_id, v.title, v.sku, v.price_cents,
-      v.compare_at_price_cents, v.available, JSON.stringify(v.raw),
+      productId,
+      v.source_variant_id,
+      v.title,
+      v.sku,
+      v.price_cents,
+      v.compare_at_price_cents,
+      v.available,
+      JSON.stringify(v.raw),
     ]);
   }
   return productId;
@@ -250,7 +282,9 @@ async function main() {
     `Kohepets ingest -> ${args.dryRun ? "DRY RUN" : describeTarget()} | limit=${args.limit}`,
   );
 
-  const handles = interleaveByType(await fetchFoodCollections(args.collectionsLimit));
+  const handles = interleaveByType(
+    await fetchFoodCollections(args.collectionsLimit),
+  );
   console.log(`Found ${handles.length} food collections`);
 
   const pool = args.dryRun ? null : getPool();
@@ -276,7 +310,9 @@ async function main() {
       const petTypeHint = petTypeFrom(handle);
       let json;
       try {
-        json = await fetchJson(`${BASE}/collections/${handle}/products.json?limit=250`);
+        json = await fetchJson(
+          `${BASE}/collections/${handle}/products.json?limit=250`,
+        );
       } catch (e) {
         console.warn(`  ! ${handle}: ${e.message}`);
         continue;
@@ -304,7 +340,9 @@ async function main() {
         added += 1;
       }
       if (added) {
-        console.log(`  + ${handle} (${petTypeHint ?? "?"}): +${added} [total ${productCount}]`);
+        console.log(
+          `  + ${handle} (${petTypeHint ?? "?"}): +${added} [total ${productCount}]`,
+        );
       }
       await sleep(args.delay);
     }
@@ -315,7 +353,11 @@ async function main() {
          set status='succeeded', finished_at=now(), stats=$2::jsonb where id=$1`,
         [
           runId,
-          JSON.stringify({ products: productCount, variants: variantCount, withIngredients }),
+          JSON.stringify({
+            products: productCount,
+            variants: variantCount,
+            withIngredients,
+          }),
         ],
       );
     }
